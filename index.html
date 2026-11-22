@@ -1,0 +1,229 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="問題チェック">
+<meta name="theme-color" content="#f5f5f7">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-180.png">
+<title>問題チェック s1〜s48</title>
+<style>
+:root{
+  --bg:#f5f5f7; --card:#fff; --fg:#1d1d1f; --sub:#86868b; --line:#e5e5ea;
+  --o:#1f9d55; --x:#e0342f; --t:#e8a400; --run:#0a84ff;
+}
+@media (prefers-color-scheme: dark){
+  :root{ --bg:#000; --card:#1c1c1e; --fg:#f5f5f7; --sub:#8e8e93; --line:#2c2c2e; }
+}
+*{box-sizing:border-box; -webkit-tap-highlight-color:transparent}
+html,body{margin:0; background:var(--bg); color:var(--fg);
+  font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans",sans-serif;
+  -webkit-user-select:none; user-select:none}
+header{position:sticky; top:0; z-index:5; background:var(--bg);
+  padding:calc(env(safe-area-inset-top) + 8px) 12px 8px; border-bottom:1px solid var(--line)}
+.top{display:flex; gap:8px; align-items:center}
+select,button{font:inherit; color:inherit}
+select{flex:1; min-width:0; padding:8px; border-radius:10px; border:1px solid var(--line); background:var(--card); font-size:16px}
+.btn{padding:8px 12px; border-radius:10px; border:1px solid var(--line); background:var(--card); font-size:15px}
+.stats{display:flex; gap:6px; margin-top:8px; font-size:14px}
+.stat{flex:1; text-align:center; padding:6px 0; border-radius:10px; background:var(--card); border:2px solid transparent}
+.stat b{display:block; font-size:18px}
+.stat.on{border-color:var(--fg)}
+.stat.o b{color:var(--o)} .stat.x b{color:var(--x)} .stat.t b{color:var(--t)}
+.total{margin-top:6px; font-size:13px; color:var(--sub); text-align:center}
+main{padding:8px 12px calc(env(safe-area-inset-bottom) + 90px)}
+.row{display:flex; align-items:center; gap:6px; background:var(--card); border-radius:12px;
+  padding:8px; margin-bottom:6px; border:2px solid transparent}
+.row.running{border-color:var(--run)}
+.id{width:40px; font-weight:700; font-size:16px}
+.time{width:72px; text-align:right; font-variant-numeric:tabular-nums; font-size:17px; padding:6px 2px; color:var(--sub)}
+.time.has{color:var(--fg)}
+.row.running .time{color:var(--run); font-weight:700}
+.play{width:44px; height:44px; border-radius:50%; border:none; background:var(--line); font-size:16px}
+.row.running .play{background:var(--run); color:#fff}
+.marks{display:flex; gap:5px; margin-left:auto}
+.m{width:44px; height:44px; border-radius:10px; border:2px solid var(--line); background:transparent; font-size:22px; font-weight:700; color:var(--sub); padding:0}
+.m.o.on{background:var(--o); border-color:var(--o); color:#fff}
+.m.x.on{background:var(--x); border-color:var(--x); color:#fff}
+.m.t.on{background:var(--t); border-color:var(--t); color:#fff}
+footer{position:fixed; left:0; right:0; bottom:0; display:flex; gap:8px; background:var(--bg);
+  padding:8px 12px calc(env(safe-area-inset-bottom) + 8px); border-top:1px solid var(--line)}
+footer .btn{flex:1}
+.toast{position:fixed; left:50%; bottom:100px; transform:translateX(-50%); background:rgba(0,0,0,.8); color:#fff;
+  padding:10px 16px; border-radius:20px; font-size:14px; opacity:0; transition:opacity .2s; pointer-events:none}
+.toast.show{opacity:1}
+</style>
+</head>
+<body>
+<header>
+  <div class="top">
+    <select id="round"></select>
+    <button class="btn" id="newRound">＋新しい回</button>
+  </div>
+  <div class="stats" id="stats"></div>
+  <div class="total" id="total"></div>
+</header>
+<main id="list"></main>
+<footer>
+  <button class="btn" id="copy">結果をコピー</button>
+  <button class="btn" id="menu">回の管理</button>
+</footer>
+<div class="toast" id="toast"></div>
+
+<script>
+const N = 48;
+const KEY = 's48-check-v1';
+const IDS = Array.from({length:N}, (_,i) => 's' + (i+1));
+const MARK = {o:'○', x:'×', t:'△'};
+
+let db = load();
+let filter = null; // null | 'o' | 'x' | 't' | 'none'
+
+function newRound(name){ return {name, items:{}, running:null}; }
+function load(){
+  try{ const d = JSON.parse(localStorage.getItem(KEY)); if(d && d.rounds && d.rounds.length) return d; }catch(e){}
+  return {cur:0, rounds:[newRound('1回目')]};
+}
+function save(){ localStorage.setItem(KEY, JSON.stringify(db)); }
+function R(){ return db.rounds[db.cur]; }
+function item(id){ return R().items[id] || (R().items[id] = {t:0, m:null}); }
+
+// 計測中の経過も含めた時間(ms)
+function elapsed(id){
+  const it = R().items[id]; let t = it ? it.t : 0;
+  const run = R().running;
+  if(run && run.id === id) t += Date.now() - run.start;
+  return t;
+}
+function fmt(ms){
+  const s = Math.floor(ms/1000), h = Math.floor(s/3600), m = Math.floor(s%3600/60), ss = s%60;
+  return (h ? h + ':' + String(m).padStart(2,'0') : m) + ':' + String(ss).padStart(2,'0');
+}
+function stop(){
+  const run = R().running; if(!run) return;
+  item(run.id).t += Date.now() - run.start;
+  R().running = null;
+}
+function toggleRun(id){
+  const run = R().running;
+  const same = run && run.id === id;
+  stop();
+  if(!same) R().running = {id, start: Date.now()};
+  save(); render();
+}
+function setMark(id, m){
+  const it = item(id);
+  it.m = it.m === m ? null : m;
+  // 印を付けたら、その問題の計測は止める
+  if(it.m && R().running && R().running.id === id) stop();
+  save(); render();
+}
+function editTime(id){
+  const cur = fmt(elapsed(id));
+  const v = prompt(id + ' の時間（例 3:25 / 秒数 / 空で0）', cur);
+  if(v === null) return;
+  const s = v.trim();
+  let sec;
+  if(s === '') sec = 0;
+  else if(/^\d+(:\d{1,2}){0,2}$/.test(s)) sec = s.split(':').reduce((a,b) => a*60 + Number(b), 0);
+  else { toast('形式が違います'); return; }
+  if(R().running && R().running.id === id) R().running = null;
+  item(id).t = sec * 1000;
+  save(); render();
+}
+
+function render(){
+  // 回の選択
+  const sel = document.getElementById('round');
+  sel.innerHTML = db.rounds.map((r,i) => `<option value="${i}">${esc(r.name)}</option>`).join('');
+  sel.value = db.cur;
+
+  // 集計
+  const c = {o:0, x:0, t:0, none:0};
+  let total = 0;
+  IDS.forEach(id => { const it = R().items[id]; c[it && it.m ? it.m : 'none']++; total += elapsed(id); });
+  document.getElementById('stats').innerHTML =
+    ['o','x','t','none'].map(k => `<div class="stat ${k}${filter===k?' on':''}" data-f="${k}"><b>${c[k]}</b>${k==='none'?'未':MARK[k]}</div>`).join('');
+  const done = N - c.none;
+  document.getElementById('total').textContent =
+    `合計 ${fmt(total)}　・　${done}/${N}問` + (done ? `　・　正答率 ${Math.round(c.o/done*100)}%` : '') +
+    (filter ? '　（絞り込み中：もう一度タップで解除）' : '');
+
+  // 一覧
+  const list = document.getElementById('list');
+  const run = R().running;
+  list.innerHTML = IDS.filter(id => {
+    if(!filter) return true;
+    const m = R().items[id] && R().items[id].m;
+    return filter === 'none' ? !m : m === filter;
+  }).map(id => {
+    const it = R().items[id] || {}; const on = run && run.id === id; const t = elapsed(id);
+    return `<div class="row${on?' running':''}" data-id="${id}">
+      <div class="id">${id}</div>
+      <div class="time${t?' has':''}" data-act="edit">${fmt(t)}</div>
+      <button class="play" data-act="run">${on?'■':'▶'}</button>
+      <div class="marks">${['o','x','t'].map(k => `<button class="m ${k}${it.m===k?' on':''}" data-act="${k}">${MARK[k]}</button>`).join('')}</div>
+    </div>`;
+  }).join('');
+}
+function tick(){
+  const run = R().running; if(!run) return;
+  const el = document.querySelector(`.row[data-id="${run.id}"] .time`);
+  if(el) el.textContent = fmt(elapsed(run.id));
+  let total = 0; IDS.forEach(id => total += elapsed(id));
+  const tt = document.getElementById('total');
+  tt.textContent = tt.textContent.replace(/^合計 [\d:]+/, '合計 ' + fmt(total));
+}
+setInterval(tick, 500);
+
+document.getElementById('list').addEventListener('click', e => {
+  const a = e.target.closest('[data-act]'); if(!a) return;
+  const id = a.closest('.row').dataset.id, act = a.dataset.act;
+  if(act === 'run') toggleRun(id);
+  else if(act === 'edit') editTime(id);
+  else setMark(id, act);
+});
+document.getElementById('stats').addEventListener('click', e => {
+  const s = e.target.closest('[data-f]'); if(!s) return;
+  filter = filter === s.dataset.f ? null : s.dataset.f; render();
+});
+document.getElementById('round').addEventListener('change', e => {
+  stop(); db.cur = Number(e.target.value); save(); render();
+});
+document.getElementById('newRound').addEventListener('click', () => {
+  const name = prompt('新しい回の名前', (db.rounds.length+1) + '回目');
+  if(!name) return;
+  stop(); db.rounds.push(newRound(name.trim())); db.cur = db.rounds.length-1; filter = null; save(); render();
+});
+document.getElementById('menu').addEventListener('click', () => {
+  const v = prompt(`「${R().name}」をどうしますか？\n1: 名前を変える\n2: この回の記録を全部消す\n3: この回を削除する`);
+  if(v === '1'){
+    const n = prompt('新しい名前', R().name); if(n){ R().name = n.trim(); save(); render(); }
+  }else if(v === '2'){
+    if(confirm(`「${R().name}」の時間と印を全部消します。よろしいですか？`)){ R().items = {}; R().running = null; save(); render(); }
+  }else if(v === '3'){
+    if(db.rounds.length === 1){ toast('最後の1つは削除できません（2で記録を消せます）'); return; }
+    if(confirm(`「${R().name}」を削除します。よろしいですか？`)){ db.rounds.splice(db.cur,1); db.cur = 0; save(); render(); }
+  }
+});
+document.getElementById('copy').addEventListener('click', async () => {
+  const lines = [R().name];
+  IDS.forEach(id => { const it = R().items[id] || {}; lines.push(`${id}\t${fmt(elapsed(id))}\t${it.m ? MARK[it.m] : ''}`); });
+  lines.push(document.getElementById('total').textContent.replace(/　（.*$/, ''));
+  const text = lines.join('\n');
+  try{ await navigator.clipboard.writeText(text); toast('コピーしました（メモ等に貼り付けできます）'); }
+  catch(e){ prompt('コピーしてください', text); }
+});
+
+function esc(s){ return String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+let tt; function toast(msg){ const t = document.getElementById('toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(tt); tt = setTimeout(() => t.classList.remove('show'), 1800); }
+
+render();
+if('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js');
+</script>
+</body>
+</html>
