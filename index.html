@@ -65,6 +65,24 @@ main{padding:10px 12px calc(env(safe-area-inset-bottom) + 90px)}
 .dm.o.on{background:var(--o); border-color:var(--o); color:#fff}
 .dm.x.on{background:var(--x); border-color:var(--x); color:#fff}
 .dm.t.on{background:var(--t); border-color:var(--t); color:#fff}
+.dwhen{text-align:center; color:var(--sub); font-size:13px; margin-top:6px; line-height:1.6}
+#ana{position:fixed; inset:0; z-index:10; background:var(--bg); display:none; overflow-y:auto; -webkit-overflow-scrolling:touch;
+  padding:calc(env(safe-area-inset-top) + 8px) 12px calc(env(safe-area-inset-bottom) + 24px); -webkit-user-select:text; user-select:text}
+#ana.show{display:block}
+#ana h2{font-size:15px; margin:20px 4px 8px; color:var(--sub); font-weight:600}
+.cards{display:grid; grid-template-columns:repeat(2,1fr); gap:8px}
+.card{background:var(--card); border-radius:12px; padding:10px 12px}
+.card .k{font-size:12px; color:var(--sub)}
+.card .v{font-size:22px; font-weight:700; font-variant-numeric:tabular-nums}
+.card .v small{font-size:13px; font-weight:400; color:var(--sub)}
+.note{background:var(--card); border-radius:12px; padding:12px; font-size:14px; line-height:1.7}
+table{width:100%; border-collapse:collapse; background:var(--card); border-radius:12px; overflow:hidden; font-size:13px; font-variant-numeric:tabular-nums}
+th,td{padding:8px 4px; text-align:right; border-bottom:1px solid var(--line); white-space:nowrap}
+th:first-child,td:first-child{text-align:left; padding-left:10px}
+th{color:var(--sub); font-weight:500; font-size:12px}
+tr:last-child td{border-bottom:none}
+td.o{color:var(--o)} td.x{color:var(--x)} td.t{color:var(--t)}
+.empty{color:var(--sub); text-align:center; padding:16px; font-size:14px}
 footer{position:fixed; left:0; right:0; bottom:0; display:flex; gap:8px; background:var(--bg);
   padding:8px 12px calc(env(safe-area-inset-bottom) + 8px); border-top:1px solid var(--line)}
 footer .btn{flex:1}
@@ -84,6 +102,7 @@ footer .btn{flex:1}
 </header>
 <main id="list"></main>
 <footer>
+  <button class="btn" id="statsBtn">記録・分析</button>
   <button class="btn" id="copy">結果をコピー</button>
   <button class="btn" id="menu">回の管理</button>
 </footer>
@@ -96,6 +115,7 @@ footer .btn{flex:1}
     </div>
   </div>
   <div class="dtitle" id="dtitle"></div>
+  <div class="dwhen" id="dwhen"></div>
   <div class="watch" id="watch" data-act="edit">0:00</div>
   <div class="hint">時間をタップすると手で直せます</div>
   <div class="ctrl">
@@ -107,6 +127,10 @@ footer .btn{flex:1}
     <button class="dm x" data-m="x">×</button>
     <button class="dm t" data-m="t">△</button>
   </div>
+</div>
+<div id="ana">
+  <div class="dnav"><button class="btn" id="anaBack">‹ 一覧</button><div style="font-weight:700">記録・分析</div><div style="width:80px"></div></div>
+  <div id="anaBody"></div>
 </div>
 <div class="toast" id="toast"></div>
 
@@ -148,12 +172,13 @@ function toggleRun(id){
   const run = R().running;
   const same = run && run.id === id;
   stop();
-  if(!same) R().running = {id, start: Date.now()};
+  if(!same){ R().running = {id, start: Date.now()}; if(!item(id).s) item(id).s = Date.now(); }
   save(); render();
 }
 function setMark(id, m){
   const it = item(id);
   it.m = it.m === m ? null : m;
+  if(it.m) it.at = Date.now(); else delete it.at;
   // 印を付けたら、その問題の計測は止める
   if(it.m && R().running && R().running.id === id) stop();
   save(); render();
@@ -212,6 +237,8 @@ function renderDetail(){
   if(!openId) return;
   const it = R().items[openId] || {}; const on = R().running && R().running.id === openId;
   document.getElementById('dtitle').textContent = openId;
+  document.getElementById('dwhen').innerHTML =
+    (it.s ? '開始 ' + dt(it.s) : 'まだ始めていません') + (it.at ? '<br>' + MARK[it.m] + 'を付けた日時 ' + dt(it.at) : '');
   const w = document.getElementById('watch');
   w.textContent = fmt(elapsed(openId)); w.classList.toggle('on', !!on);
   const st = document.getElementById('start');
@@ -241,7 +268,7 @@ document.getElementById('next').addEventListener('click', () => { const i = IDS.
 document.getElementById('start').addEventListener('click', () => toggleRun(openId));
 document.getElementById('reset').addEventListener('click', () => {
   if(R().running && R().running.id === openId) R().running = null;
-  item(openId).t = 0; save(); render();
+  item(openId).t = 0; delete item(openId).s; save(); render();
 });
 document.getElementById('watch').addEventListener('click', () => editTime(openId));
 document.querySelectorAll('.dm').forEach(b => b.addEventListener('click', () => setMark(openId, b.dataset.m)));
@@ -270,12 +297,92 @@ document.getElementById('menu').addEventListener('click', () => {
 });
 document.getElementById('copy').addEventListener('click', async () => {
   const lines = [R().name];
-  IDS.forEach(id => { const it = R().items[id] || {}; lines.push(`${id}\t${fmt(elapsed(id))}\t${it.m ? MARK[it.m] : ''}`); });
+  IDS.forEach(id => { const it = R().items[id] || {}; lines.push(`${id}\t${fmt(elapsed(id))}\t${it.m ? MARK[it.m] : ''}\t${it.at ? dt(it.at) : ''}`); });
   lines.push(document.getElementById('total').textContent.replace(/　（.*$/, ''));
   const text = lines.join('\n');
   try{ await navigator.clipboard.writeText(text); toast('コピーしました（メモ等に貼り付けできます）'); }
   catch(e){ prompt('コピーしてください', text); }
 });
+
+const WD = '日月火水木金土';
+function pad(n){ return String(n).padStart(2,'0'); }
+function dt(ts){ const d = new Date(ts); return `${d.getMonth()+1}/${d.getDate()}(${WD[d.getDay()]}) ${d.getHours()}:${pad(d.getMinutes())}`; }
+function dayKey(ts){ const d = new Date(ts); return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`; }
+function dayLabel(k){ const d = new Date(k + 'T00:00:00'); return `${d.getMonth()+1}/${d.getDate()}(${WD[d.getDay()]})`; }
+function pct(a,b){ return b ? Math.round(a/b*100) + '%' : '—'; }
+function card(k,v){ return `<div class="card"><div class="k">${k}</div><div class="v">${v}</div></div>`; }
+
+// 印を付けた問題を全部の回から集める（日時のない古い記録は日別・ペースに入れない）
+function attempts(){
+  const out = [];
+  db.rounds.forEach((r,ri) => IDS.forEach(id => {
+    const it = r.items[id];
+    if(it && it.m) out.push({ri, id, m:it.m, t:it.t, at:it.at});
+  }));
+  return out;
+}
+function renderAna(){
+  const A = attempts();
+  const cnt = a => ({o:a.filter(x=>x.m==='o').length, x:a.filter(x=>x.m==='x').length, t:a.filter(x=>x.m==='t').length, n:a.length,
+                     time:a.reduce((s,x)=>s+x.t,0), timed:a.filter(x=>x.t>0).length});
+  const all = cnt(A);
+  const dated = A.filter(x => x.at);
+  const days = {};
+  dated.forEach(x => (days[dayKey(x.at)] = days[dayKey(x.at)] || []).push(x));
+  const dayKeys = Object.keys(days).sort();
+  let h = '';
+
+  // 全体
+  h += '<h2>全体（すべての回）</h2><div class="cards">';
+  h += card('解いた問題', `${all.n}<small> 問</small>`);
+  h += card('正答率（○の割合）', pct(all.o, all.n));
+  h += card('○ / × / △', `<span style="color:var(--o)">${all.o}</span> / <span style="color:var(--x)">${all.x}</span> / <span style="color:var(--t)">${all.t}</span>`);
+  h += card('1問の平均時間', all.timed ? fmt(all.time/all.timed) : '—');
+  h += card('合計時間', fmt(all.time));
+  h += card('勉強した日数', `${dayKeys.length}<small> 日</small>`);
+  h += '</div>';
+
+  // ペース（今の回）
+  const r = R(); const cur = cnt(A.filter(x => x.ri === db.cur));
+  const curDated = dated.filter(x => x.ri === db.cur);
+  h += `<h2>ペース（${esc(r.name)}）</h2>`;
+  if(curDated.length){
+    const first = Math.min(...curDated.map(x=>x.at));
+    const curDays = new Set(curDated.map(x => dayKey(x.at))).size;
+    const spanDays = Math.floor((new Date(dayKey(Date.now())+'T00:00:00') - new Date(dayKey(first)+'T00:00:00'))/86400000) + 1;
+    const perDay = curDated.length / spanDays;
+    const perStudyDay = curDated.length / curDays;
+    const left = N - cur.n;
+    let finish = '';
+    if(left === 0) finish = '全問終わりました';
+    else { const d = Math.ceil(left / perDay); const f = new Date(Date.now() + d*86400000);
+      finish = `このペースだと、残り ${left} 問はあと約 <b>${d} 日</b>（${f.getMonth()+1}/${f.getDate()}ごろ）で終わります`; }
+    h += `<div class="cards">${card('進み具合', `${cur.n}<small> / ${N} 問</small>`)}${card('正答率', pct(cur.o, cur.n))}
+      ${card('1日あたり（始めた日から）', `${perDay.toFixed(1)}<small> 問</small>`)}${card('勉強した日の平均', `${perStudyDay.toFixed(1)}<small> 問</small>`)}</div>
+      <div class="note" style="margin-top:8px">${dt(first).split(' ')[0]} に始めて ${spanDays} 日目（うち勉強した日 ${curDays} 日）<br>${finish}</div>`;
+  } else h += '<div class="note empty">この回は、まだ日時つきの記録がありません</div>';
+
+  // 日別
+  h += '<h2>日別</h2>';
+  if(dayKeys.length){
+    h += '<table><tr><th>日付</th><th>問</th><th>○</th><th>×</th><th>△</th><th>正答率</th><th>時間</th><th>平均</th></tr>';
+    dayKeys.slice().reverse().forEach(k => { const c = cnt(days[k]);
+      h += `<tr><td>${dayLabel(k)}</td><td>${c.n}</td><td class="o">${c.o}</td><td class="x">${c.x}</td><td class="t">${c.t}</td><td>${pct(c.o,c.n)}</td><td>${fmt(c.time)}</td><td>${c.timed?fmt(c.time/c.timed):'—'}</td></tr>`; });
+    h += '</table>';
+  } else h += '<div class="note empty">まだ記録がありません</div>';
+
+  // 回別
+  h += '<h2>回ごと</h2><table><tr><th>回</th><th>済</th><th>正答率</th><th>○</th><th>×</th><th>△</th><th>平均</th></tr>';
+  db.rounds.forEach((rr,i) => { const c = cnt(A.filter(x => x.ri === i));
+    h += `<tr><td>${esc(rr.name)}</td><td>${c.n}/${N}</td><td>${pct(c.o,c.n)}</td><td class="o">${c.o}</td><td class="x">${c.x}</td><td class="t">${c.t}</td><td>${c.timed?fmt(c.time/c.timed):'—'}</td></tr>`; });
+  h += '</table>';
+
+  if(A.length > dated.length) h += `<div class="hint" style="margin-top:12px">日時の記録を始める前に付けた ${A.length - dated.length} 問は、日別とペースには入っていません</div>`;
+  h += '<div class="hint" style="margin-top:8px">正答率 = ○ ÷ 解いた問題（△は正解に入れていません）<br>日付は○×△を付けた日で数えています</div>';
+  document.getElementById('anaBody').innerHTML = h;
+}
+document.getElementById('statsBtn').addEventListener('click', () => { renderAna(); document.getElementById('ana').classList.add('show'); });
+document.getElementById('anaBack').addEventListener('click', () => document.getElementById('ana').classList.remove('show'));
 
 function esc(s){ return String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
 let tt; function toast(msg){ const t = document.getElementById('toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(tt); tt = setTimeout(() => t.classList.remove('show'), 1800); }
