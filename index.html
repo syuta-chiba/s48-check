@@ -83,6 +83,8 @@ th{color:var(--sub); font-weight:500; font-size:12px}
 tr:last-child td{border-bottom:none}
 td.o{color:var(--o)} td.x{color:var(--x)} td.t{color:var(--t)}
 .empty{color:var(--sub); text-align:center; padding:16px; font-size:14px}
+.bk{margin-top:6px; font-size:12px; text-align:center; color:#b26a00}
+.bk:empty{display:none}
 footer{position:fixed; left:0; right:0; bottom:0; display:flex; gap:8px; background:var(--bg);
   padding:8px 12px calc(env(safe-area-inset-bottom) + 8px); border-top:1px solid var(--line)}
 footer .btn{flex:1}
@@ -99,6 +101,7 @@ footer .btn{flex:1}
   </div>
   <div class="stats" id="stats"></div>
   <div class="total" id="total"></div>
+  <div class="bk" id="bk"></div>
 </header>
 <main id="list"></main>
 <footer>
@@ -130,6 +133,16 @@ footer .btn{flex:1}
 </div>
 <div id="ana">
   <div class="dnav"><button class="btn" id="anaBack">‹ 一覧</button><div style="font-weight:700">記録・分析</div><div style="width:80px"></div></div>
+  <h2>データの保存（ファイル）</h2>
+  <div class="note">
+    <div id="bkInfo"></div>
+    <div style="display:flex; gap:8px; margin-top:10px">
+      <button class="btn" id="bkSave" style="flex:1">ファイルに保存</button>
+      <button class="btn" id="bkLoad" style="flex:1">ファイルから戻す</button>
+    </div>
+    <input type="file" id="bkFile" accept=".json,application/json" style="display:none">
+    <div class="hint" style="text-align:left; margin-top:8px">「ファイルに保存」→「"ファイル"に保存」で iCloud Drive などに置けます</div>
+  </div>
   <div id="anaBody"></div>
 </div>
 <div class="toast" id="toast"></div>
@@ -210,6 +223,10 @@ function render(){
   document.getElementById('stats').innerHTML =
     ['o','x','t','none'].map(k => `<div class="stat ${k}${filter===k?' on':''}" data-f="${k}"><b>${c[k]}</b>${k==='none'?'未':MARK[k]}</div>`).join('');
   const done = N - c.none;
+  const hasData = db.rounds.some(r => Object.values(r.items).some(it => it.m || it.t));
+  const bkDays = db.backupAt ? Math.floor((Date.now() - db.backupAt) / 86400000) : null;
+  document.getElementById('bk').textContent = hasData && (bkDays === null || bkDays >= 3)
+    ? (bkDays === null ? 'まだファイルに保存していません' : `最後のファイル保存から ${bkDays} 日たっています`) + '（記録・分析 → ファイルに保存）' : '';
   document.getElementById('total').textContent =
     `合計 ${fmt(total)}　・　${done}/${N}問` + (done ? `　・　正答率 ${Math.round(c.o/done*100)}%` : '') +
     (filter ? '　（絞り込み中：もう一度タップで解除）' : '');
@@ -380,12 +397,40 @@ function renderAna(){
   if(A.length > dated.length) h += `<div class="hint" style="margin-top:12px">日時の記録を始める前に付けた ${A.length - dated.length} 問は、日別とペースには入っていません</div>`;
   h += '<div class="hint" style="margin-top:8px">正答率 = ○ ÷ 解いた問題（△は正解に入れていません）<br>日付は○×△を付けた日で数えています</div>';
   document.getElementById('anaBody').innerHTML = h;
+  document.getElementById('bkInfo').textContent = db.backupAt ? '最後に保存した日時: ' + dt(db.backupAt) : 'まだファイルに保存していません';
 }
 document.getElementById('statsBtn').addEventListener('click', () => { renderAna(); document.getElementById('ana').classList.add('show'); });
 document.getElementById('anaBack').addEventListener('click', () => document.getElementById('ana').classList.remove('show'));
 
 function esc(s){ return String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
 let tt; function toast(msg){ const t = document.getElementById('toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(tt); tt = setTimeout(() => t.classList.remove('show'), 1800); }
+
+// ファイルに保存 / ファイルから戻す
+document.getElementById('bkSave').addEventListener('click', async () => {
+  const now = new Date();
+  const name = `s48-check_${dayKey(now)}_${pad(now.getHours())}${pad(now.getMinutes())}.json`;
+  const prev = db.backupAt; db.backupAt = now.getTime();
+  const text = JSON.stringify({app:'s48-check', version:1, savedAt:now.toISOString(), data:db}, null, 1);
+  const file = new File([text], name, {type:'application/json'});
+  try{
+    if(navigator.canShare && navigator.canShare({files:[file]})) await navigator.share({files:[file]});
+    else { const a = document.createElement('a'); a.href = URL.createObjectURL(file); a.download = name; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 5000); }
+    save(); render(); renderAna(); toast('保存しました');
+  }catch(e){ db.backupAt = prev; if(e.name !== 'AbortError') toast('保存できませんでした'); }
+});
+document.getElementById('bkLoad').addEventListener('click', () => document.getElementById('bkFile').click());
+document.getElementById('bkFile').addEventListener('change', async e => {
+  const f = e.target.files[0]; e.target.value = ''; if(!f) return;
+  try{
+    const j = JSON.parse(await f.text());
+    const d = j && j.app === 's48-check' ? j.data : null;
+    if(!d || !Array.isArray(d.rounds) || !d.rounds.length) throw 0;
+    const n = d.rounds.reduce((a,r) => a + Object.values(r.items || {}).filter(it => it.m).length, 0);
+    if(!confirm(`${f.name}\n（${d.rounds.length}回分・印 ${n} 問）\n\n今の記録をこのファイルの内容に置き換えます。よろしいですか？`)) return;
+    d.cur = Math.min(d.cur || 0, d.rounds.length - 1);
+    db = d; save(); filter = null; render(); renderAna(); toast('ファイルから戻しました');
+  }catch(err){ toast('このアプリの保存ファイルではありません'); }
+});
 
 render();
 if('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js');
