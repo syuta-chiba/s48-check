@@ -36,11 +36,11 @@ select{flex:1; min-width:0; padding:8px; border-radius:10px; border:1px solid va
 .stat.o b{color:var(--o)} .stat.x b{color:var(--x)} .stat.t b{color:var(--t)}
 .total{margin-top:6px; font-size:13px; color:var(--sub); text-align:center}
 main{padding:10px 12px calc(env(safe-area-inset-bottom) + 90px)}
-.grid{display:grid; grid-template-columns:repeat(4,1fr); gap:8px}
-.tile{background:var(--card); border-radius:12px; padding:10px 4px; text-align:center; border:2px solid transparent}
-.tile .id{font-weight:700; font-size:16px}
-.tile .st{font-size:22px; font-weight:800; height:28px; line-height:28px; color:var(--sub)}
-.tile .st.none{font-size:12px; font-weight:400}
+.grid{display:flex; flex-direction:column; gap:6px}
+.tile{display:flex; align-items:center; justify-content:space-between; background:var(--card); border-radius:12px; padding:12px 16px; border:2px solid transparent}
+.tile .id{font-weight:700; font-size:17px}
+.tile .st{font-size:24px; font-weight:800; line-height:28px; color:var(--sub)}
+.tile .st.none{font-size:14px; font-weight:400}
 .tile.o{border-color:var(--o)} .tile.o .st{color:var(--o)}
 .tile.x{border-color:var(--x)} .tile.x .st{color:var(--x)}
 .tile.t{border-color:var(--t)} .tile.t .st{color:var(--t)}
