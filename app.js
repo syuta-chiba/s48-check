@@ -685,6 +685,8 @@ const Sync = {
       if(useRemote){
         db = migrate(remote); localStorage.setItem(KEY, JSON.stringify(db)); this.cfg.sha = sha;
         renderAll(); toast('GitHub の新しい記録を読み込みました');
+      } else if(!remote && !db.subjects.length && !db.books.length && !db.log.length){
+        if(manual) toast('この端末にはまだ記録がないので、保存するものがありません');   // 空の記録で GitHub を作らない
       } else if(!remote || (remote.updatedAt || 0) < (db.updatedAt || 0)){
         await this.push(sha); if(manual) toast('GitHub に保存しました');
       } else { this.cfg.sha = sha; if(manual) toast('GitHub と同じです（保存済み）'); }
