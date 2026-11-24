@@ -48,7 +48,7 @@ iPhone のホーム画面に追加して使う、受験勉強の管理アプリ�
 
 ## 開発
 
-ビルドはありません。`index.html`（画面と CSS）と `app.js`（動き）を直して `main` に push すると、GitHub Pages に 1 分ほどで反映されます。
+ビルドはありません。`index.html`（画面と CSS）と `app.js`（動き）を直したら、**`sh tools/bump.sh` で版の番号を上げてから** `main` に push します。GitHub Pages に 1 分ほどで反映され、iPhone のアプリは開き直したときに自動で新しい版になります。
 
 ```
 index.html      画面の骨組みと CSS

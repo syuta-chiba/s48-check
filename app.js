@@ -770,6 +770,19 @@ document.addEventListener('visibilitychange', () => {
 });
 window.addEventListener('online', () => Sync.sync());
 
+/* ---------- 新しい版が出ていたら自動で読み込み直す ---------- */
+const BUILD = (new URL(document.getElementById('appjs').src)).searchParams.get('v') || '';
+async function checkUpdate(){
+  if(location.protocol === 'file:' || $('#form').classList.contains('show')) return;   // 入力中は待つ
+  try{
+    const html = await (await fetch('index.html?check=' + Date.now(), {cache:'no-store'})).text();
+    const m = /app\.js\?v=(\w+)/.exec(html);
+    if(m && BUILD && m[1] !== BUILD){ Sync.flush(); toast('新しい版に更新します'); setTimeout(() => location.reload(), 800); }
+  }catch(e){}
+}
+document.addEventListener('visibilitychange', () => { if(document.visibilityState === 'visible') checkUpdate(); });
+
 renderAll();
 Sync.sync();
-if('serviceWorker' in navigator && location.protocol !== 'file:') navigator.serviceWorker.register('sw.js');
+if('serviceWorker' in navigator && location.protocol !== 'file:') navigator.serviceWorker.register('sw.js', {updateViaCache:'none'}).then(r => r.update()).catch(() => {});
+checkUpdate();

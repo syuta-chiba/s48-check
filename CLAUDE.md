@@ -6,6 +6,8 @@
 
 - 使う人は、大学・高校受験の勉強をする本人です。iPhone のホーム画面から開きます。画面の文はすべて、やさしい日本語で書きます。
 - 公開は GitHub Pages（`syuta-chiba/s48-check` の main ブランチ直下）です。push すると反映されます。
+- **`app.js` や `index.html` を直したら、commit の前に必ず `sh tools/bump.sh` を実行すること。** index.html の `app.js?v=番号`（キャッシュバスター）が新しくなります。開いている iPhone のアプリは、開き直したときにこの番号の違いを見つけて、自動で読み込み直します（`checkUpdate()`）。番号を変えないと、iPhone に古い版が残ります。
+- Service Worker（sw.js）はネット優先で、毎回サーバーに確かめます。つながらないときだけキャッシュを使います。ファイルを増やしたら `FILES` に足し、`C` の番号を上げてください。
 - **URL・localStorage のキー `s48-check-v1` を変えないこと。** 変えると iPhone の中の記録が読めなくなります。
 - 記録の保存先は非公開リポジトリ `syuta-chiba/study-data` です（`data.json` と `README.md`）。
 
