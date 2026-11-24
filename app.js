@@ -5,6 +5,7 @@ const SYNC_KEY = 'study-sync-v1';    // GitHub の設定（トークンは記録
 const MARK = {o:'○', x:'×', t:'△'};
 const WD = '日月火水木金土';
 const COMMON = ['英語', '数学', '国語', '理科', '社会'];
+const BUILD = (() => { try{ return new URL(document.getElementById('appjs').src).searchParams.get('v') || ''; }catch(e){ return ''; } })();
 const $ = s => document.querySelector(s);
 const uid = () => Math.random().toString(36).slice(2, 9);
 
@@ -377,10 +378,10 @@ function renderSet(){
     h += '<div style="display:flex; gap:8px; margin-top:10px"><button class="btn" style="flex:1" data-act="syncNow">今すぐ保存</button><button class="btn" style="flex:1" data-act="syncSetup">設定を変える</button></div>';
     h += '<div class="hint" style="margin-top:6px">記録を変えると数秒後に自動で GitHub に保存されます。アプリを開いたときは GitHub の新しい記録を読み込みます</div>';
   } else h += 'まだ設定していません。設定すると、記録が GitHub の非公開リポジトリに自動で保存され、履歴を消しても・別の端末でも戻せます。'
-    + '<button class="btn wide primary" data-act="qrScan">📷 QR コードでトークンを受け取る</button>'
-    + '<div class="hint" style="margin-top:4px">PC で作ったトークンは、PC でこのアプリを開いて「トークンを QR コードにする」を押すと、iPhone で読み取れます</div>'
     + '<button class="btn wide" data-act="syncSetup">トークンを貼り付けて設定</button>';
-  h += '<button class="btn wide" data-act="qrShow">トークンを QR コードにする（PC → iPhone）</button>';
+  h += '<button class="btn wide primary" data-act="qrScan">📷 QR コードでトークンを受け取る（iPhone）</button>'
+    + '<button class="btn wide" data-act="qrShow">トークンを QR コードにする（PC）</button>'
+    + '<div class="hint" style="margin-top:4px">PC で作ったトークンは、PC でこのアプリを開いて「トークンを QR コードにする」を押し、iPhone のこのアプリで「📷 QR コードで受け取る」を押して写します</div>';
   h += `<details style="margin-top:8px"><summary class="hint" style="font-size:13px">トークンの作り方</summary><div class="hint" style="font-size:13px; margin-top:6px">
     1. <a href="https://github.com/settings/personal-access-tokens/new?name=%E5%8B%89%E5%BC%B7%E7%AE%A1%E7%90%86&amp;target_name=${esc(c.repo.split('/')[0])}&amp;expires_in=366&amp;contents=write" target="_blank" rel="noopener">GitHub のトークン作成ページ</a>を開く（GitHub にログインした状態で）<br>
     2. Token name に「勉強管理」、Expiration は選べるいちばん長い期間<br>
@@ -392,6 +393,8 @@ function renderSet(){
   h += '</div>';
   h += `<h2>ファイルに保存</h2><div class="note">${db.backupAt ? '最後に保存した日時: ' + dt(db.backupAt) : 'まだファイルに保存していません'}
     <div style="display:flex; gap:8px; margin-top:10px"><button class="btn" style="flex:1" data-act="fileSave">ファイルに保存</button><button class="btn" style="flex:1" data-act="fileLoad">ファイルから戻す</button></div></div>`;
+  h += `<h2>このアプリ</h2><div class="note">版: <b>${esc(BUILD || '不明')}</b><button class="btn wide" data-act="hardUpdate">最新の版に更新</button>
+    <div class="hint">画面が古いままのときに押してください（記録は消えません）</div></div>`;
   $('#v-set').innerHTML = h;
 }
 
@@ -567,6 +570,12 @@ const ACT = {
       <button class="btn wide primary" data-sheet="close">閉じる</button>`);
   },
   async qrScan(){ qrScan(); },
+  async hardUpdate(){   // Service Worker とキャッシュを消して読み込み直す（記録は localStorage なので消えない）
+    toast('最新の版を読み込んでいます…'); Sync.flush();
+    try{ const rs = await navigator.serviceWorker.getRegistrations(); await Promise.all(rs.map(r => r.unregister())); }catch(e){}
+    try{ const ks = await caches.keys(); await Promise.all(ks.map(k => caches.delete(k))); }catch(e){}
+    setTimeout(() => location.replace(location.pathname + '?r=' + Date.now()), 600);
+  },
   fileLoad(){ $('#bkFile').click(); },
 };
 document.addEventListener('click', e => {
@@ -771,7 +780,6 @@ document.addEventListener('visibilitychange', () => {
 window.addEventListener('online', () => Sync.sync());
 
 /* ---------- 新しい版が出ていたら自動で読み込み直す ---------- */
-const BUILD = (new URL(document.getElementById('appjs').src)).searchParams.get('v') || '';
 async function checkUpdate(){
   if(location.protocol === 'file:' || $('#form').classList.contains('show')) return;   // 入力中は待つ
   try{
