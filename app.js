@@ -214,12 +214,23 @@ function renderBook(){
   $('#bStats').innerHTML = ['o','x','t','none'].map(k => `<div class="stat ${k}${filter === k ? ' on' : ''}" data-act="filter" data-f="${k}"><b>${c[k]}</b>${k === 'none' ? '未' : MARK[k]}</div>`).join('');
   const done = ids.length - c.none;
   $('#bTotal').textContent = `合計 ${fmt(total)}　・　${done}/${ids.length}問` + (done ? `　・　正答率 ${Math.round(c.o/done*100)}%` : '') + (filter ? '　（絞り込み中）' : '');
-  $('#bList').innerHTML = '<div class="grid">' + ids.filter(q => { if(!filter) return true; const m = R.items[q] && R.items[q].m; return filter === 'none' ? !m : m === filter; })
-    .map(q => { const m = (R.items[q] || {}).m, on = isRunQ(b, ri, q), t = elapsedQ(b, ri, q), p = q.split('-')[1];
-      return `<div class="tile${m ? ' ' + m : ''}${on ? ' running' : ''}${p > 1 ? ' cont' : ''}" data-act="openQ" data-q="${q}">
-        <div class="id">${esc(baseOf(q))}${p ? ` <span class="p">(${p})</span>` : ''}</div>
-        <div class="right"><span class="tm"${on ? ` data-live="q" data-q="${q}"` : ''}>${t || on ? fmt(t) : ''}</span>
-        <span class="st${m ? '' : ' none'}">${m ? MARK[m] : (on ? '計測中' : 'まだ')}</span></div></div>`; }).join('') + '</div>';
+  // 一覧は 1 問 1 行。小問に分けた問題も 1 行にまとめ、印を並べて出す（中の (1)(2) は問題の画面で切り替える）
+  const groups = []; ids.forEach(q => { const g = groups[groups.length - 1];
+    if(g && g.base === baseOf(q)) g.subs.push(q); else groups.push({base:baseOf(q), subs:[q]}); });
+  const mk = q => (R.items[q] || {}).m || null;
+  $('#bList').innerHTML = '<div class="grid">' + groups.filter(g => { if(!filter) return true;
+      return g.subs.some(q => filter === 'none' ? !mk(q) : mk(q) === filter); })
+    .map(g => {
+      const ms = g.subs.map(mk), multi = g.subs.length > 1;
+      const runQ = g.subs.find(q => isRunQ(b, ri, q)), t = g.subs.reduce((a, q) => a + elapsedQ(b, ri, q), 0);
+      const cls = ms.every(Boolean) ? (ms.includes('x') ? 'x' : ms.includes('t') ? 't' : 'o') : '';   // 全部付いたら色を付ける
+      const st = multi
+        ? `<span class="st multi">${ms.map(m => m ? `<span class="${m}">${MARK[m]}</span>` : '<span class="n">・</span>').join('')}</span>`
+        : `<span class="st${ms[0] ? '' : ' none'}">${ms[0] ? MARK[ms[0]] : (runQ ? '計測中' : 'まだ')}</span>`;
+      const open = runQ || g.subs.find(q => !mk(q)) || g.subs[0];   // 計測中か、まだの小問から開く
+      return `<div class="tile${cls ? ' ' + cls : ''}${runQ ? ' running' : ''}" data-act="openQ" data-q="${open}">
+        <div class="id">${esc(g.base)}${multi ? ` <span class="p">${g.subs.length}問</span>` : ''}</div>
+        <div class="right"><span class="tm"${runQ ? ` data-live="qsum" data-base="${esc(g.base)}"` : ''}>${t || runQ ? fmt(t) : ''}</span>${st}</div></div>`; }).join('') + '</div>';
 }
 
 /* ---------- 問題の画面 ---------- */
@@ -230,6 +241,10 @@ function renderDetail(){
   $('#dWhen').innerHTML = (it.s ? '開始 ' + dt(it.s) : 'まだ始めていません') + (it.at && it.m ? '<br>' + MARK[it.m] + 'を付けた日時 ' + dt(it.at) : '');
   const k = (b.parts || {})[baseOf(openQ)] || 1;
   $('#dSplit').textContent = k > 1 ? `小問の数を変える（今 ${k} 個）` : '(1)(2)… の小問に分ける';
+  // 小問の切り替え
+  const subs = unitIds(b).filter(q => baseOf(q) === baseOf(openQ));
+  $('#dParts').innerHTML = subs.length > 1 ? subs.map(q => { const m = (b.rounds[ri].items[q] || {}).m;
+    return `<button class="part${q === openQ ? ' on' : ''}" data-act="openQ" data-q="${q}">(${q.split('-')[1]})<b class="${m || ''}">${m ? MARK[m] : '・'}</b></button>`; }).join('') : '';
   const w = $('#watch'); w.dataset.live = 'watch'; w.textContent = fmt(elapsedQ(b, ri, openQ)); w.classList.toggle('on', on);
   const st = $('#startQ'); st.textContent = on ? 'ストップ' : (elapsedQ(b, ri, openQ) ? '再開' : 'スタート'); st.classList.toggle('on', on);
   document.querySelectorAll('.dm').forEach(x => x.classList.toggle('on', it.m === x.dataset.m));
@@ -588,6 +603,7 @@ function tick(){
     else if(k === 'today') el.textContent = fmtH(rangeTotal(m, t, t));
     else if(k === 'week') el.textContent = fmtH(rangeTotal(m, weekStart(t), t));
     else if(k === 'sub') el.textContent = fmtH(rangeTotal(m, t, t, el.dataset.sub));
+    else if(k === 'qsum' && bookId){ const b = B(bookId); if(b) el.textContent = fmt(unitIds(b).filter(q => baseOf(q) === el.dataset.base).reduce((a, q) => a + elapsedQ(b, b.cur, q), 0)); }
     else if((k === 'q' || k === 'watch') && bookId){ const b = B(bookId), q = k === 'q' ? el.dataset.q : openQ; if(b && q && isRunQ(b, b.cur, q)) el.textContent = fmt(elapsedQ(b, b.cur, q)); }
   });
 }
