@@ -1,6 +1,6 @@
 // ネット優先・オフライン時はキャッシュ
 const C = 'study-v2';
-const FILES = ['./', 'index.html', 'app.js', 'manifest.json', 'icon-180.png', 'icon-192.png', 'icon-512.png'];
+const FILES = ['./', 'index.html', 'app.js', 'manifest.json', 'icon-180.png', 'icon-192.png', 'icon-512.png', 'lib/qrcode.js', 'lib/jsQR.js'];
 self.addEventListener('install', e => { e.waitUntil(caches.open(C).then(c => c.addAll(FILES))); self.skipWaiting(); });
 self.addEventListener('activate', e => { e.waitUntil(self.clients.claim()); });
 self.addEventListener('fetch', e => {

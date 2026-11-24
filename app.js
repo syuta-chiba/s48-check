@@ -376,7 +376,11 @@ function renderSet(){
     h += `保存先: <b>${esc(c.repo)}</b>（非公開）<br>` + (c.err ? `<span class="late">! ${esc(c.err)}</span>` : c.last ? `最後に保存・確認した日時: ${dt(c.last)}` : 'まだ保存していません');
     h += '<div style="display:flex; gap:8px; margin-top:10px"><button class="btn" style="flex:1" data-act="syncNow">今すぐ保存</button><button class="btn" style="flex:1" data-act="syncSetup">設定を変える</button></div>';
     h += '<div class="hint" style="margin-top:6px">記録を変えると数秒後に自動で GitHub に保存されます。アプリを開いたときは GitHub の新しい記録を読み込みます</div>';
-  } else h += 'まだ設定していません。設定すると、記録が GitHub の非公開リポジトリに自動で保存され、履歴を消しても・別の端末でも戻せます。<button class="btn wide primary" data-act="syncSetup">GitHub に保存する設定</button>';
+  } else h += 'まだ設定していません。設定すると、記録が GitHub の非公開リポジトリに自動で保存され、履歴を消しても・別の端末でも戻せます。'
+    + '<button class="btn wide primary" data-act="qrScan">📷 QR コードでトークンを受け取る</button>'
+    + '<div class="hint" style="margin-top:4px">PC で作ったトークンは、PC でこのアプリを開いて「トークンを QR コードにする」を押すと、iPhone で読み取れます</div>'
+    + '<button class="btn wide" data-act="syncSetup">トークンを貼り付けて設定</button>';
+  h += '<button class="btn wide" data-act="qrShow">トークンを QR コードにする（PC → iPhone）</button>';
   h += `<details style="margin-top:8px"><summary class="hint" style="font-size:13px">トークンの作り方</summary><div class="hint" style="font-size:13px; margin-top:6px">
     1. <a href="https://github.com/settings/personal-access-tokens/new?name=%E5%8B%89%E5%BC%B7%E7%AE%A1%E7%90%86&amp;target_name=${esc(c.repo.split('/')[0])}&amp;expires_in=366&amp;contents=write" target="_blank" rel="noopener">GitHub のトークン作成ページ</a>を開く（GitHub にログインした状態で）<br>
     2. Token name に「勉強管理」、Expiration は選べるいちばん長い期間<br>
@@ -549,6 +553,20 @@ const ACT = {
     Object.assign(c, {token:v.token, repo:v.repo, sha:null, last:null, err:null}); Sync.store();
     toast('接続を確かめています…'); await Sync.sync(true); },
   fileSave(){ fileSave(); },
+  async qrShow(){
+    const v = await form('トークンを QR コードにする', [{key:'token', label:'トークン（github_pat_ で始まる文字）を貼り付け', type:'password', value:Sync.cfg.token,
+      hint:'この画面ではトークンを保存しません。QR コードを出すだけです'}]);
+    if(!v || !v.token) return;
+    if(!/^(github_pat_|ghp_)\w+$/.test(v.token)) return toast('トークンの形が違います（github_pat_ で始まる文字）');
+    try{ await loadScript('lib/qrcode.js'); }catch(e){ return toast('QR コードの部品を読み込めませんでした'); }
+    const q = qrcode(0, 'M'); q.addData(`STUDYTOKEN1 ${Sync.cfg.repo} ${v.token}`); q.make();
+    openSheet(`<h3>iPhone で読み取ってください</h3>
+      <div style="background:#fff; padding:16px; border-radius:12px; width:min(100%, 340px); margin:0 auto">${q.createSvgTag({cellSize:6, margin:4, scalable:true})}</div>
+      <div class="hint" style="font-size:14px; margin:10px 2px">iPhone のホーム画面の「勉強管理」→ 設定 →「📷 QR コードでトークンを受け取る」を押して、この画面を写します。<br>
+      ※ カメラアプリで読み取らないでください（Safari で開いてしまい、アプリに入りません）<br>※ 終わったら閉じてください。この QR コードはトークンそのものです</div>
+      <button class="btn wide primary" data-sheet="close">閉じる</button>`);
+  },
+  async qrScan(){ qrScan(); },
   fileLoad(){ $('#bkFile').click(); },
 };
 document.addEventListener('click', e => {
@@ -574,6 +592,49 @@ function tick(){
 setInterval(tick, 250);
 let lastDay = today();
 setInterval(() => { if(today() !== lastDay){ lastDay = today(); renderAll(); } }, 30000);   // 日付が変わったら描き直す
+
+/* ---------- QR コード（PC → iPhone でトークンを渡す） ---------- */
+const loaded = {};
+function loadScript(src){ return loaded[src] || (loaded[src] = new Promise((ok, ng) => { const s = document.createElement('script'); s.src = src; s.onload = ok; s.onerror = () => { delete loaded[src]; ng(); }; document.head.appendChild(s); })); }
+let sheetClose = null;
+function openSheet(html, onClose){
+  const L = $('#form'); L.querySelector('.sheet').dataset.saved = L.querySelector('.sheet').dataset.saved || L.querySelector('.sheet').innerHTML;
+  const sh = L.querySelector('.sheet'); sh.innerHTML = html; L.classList.add('show');
+  sheetClose = () => { L.classList.remove('show'); sh.innerHTML = sh.dataset.saved; delete sh.dataset.saved; L.onclick = null; sheetClose = null; if(onClose) onClose(); };
+  L.onclick = e => { if(e.target === L || e.target.dataset.sheet === 'close') sheetClose(); };
+}
+async function qrScan(){
+  if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) return toast('この端末ではカメラが使えません。「トークンを貼り付けて設定」を使ってください');
+  try{ await loadScript('lib/jsQR.js'); }catch(e){ return toast('読み取りの部品を読み込めませんでした（電波を確認）'); }
+  let stream, stop = false;
+  openSheet(`<h3>PC の QR コードを写してください</h3>
+    <video id="qrVideo" playsinline muted autoplay style="width:100%; border-radius:12px; background:#000; aspect-ratio:1; object-fit:cover"></video>
+    <div class="hint" id="qrMsg" style="font-size:14px; margin:8px 2px">カメラの使用を「許可」してください</div>
+    <button class="btn wide" data-sheet="close">やめる</button>`, () => { stop = true; if(stream) stream.getTracks().forEach(t => t.stop()); });
+  try{ stream = await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'}, audio:false}); }
+  catch(e){ if(sheetClose) sheetClose(); return toast('カメラを使えませんでした（iPhone の設定でカメラを許可してください）'); }
+  if(stop){ stream.getTracks().forEach(t => t.stop()); return; }
+  const v = $('#qrVideo'); v.srcObject = stream; await v.play().catch(() => {});
+  $('#qrMsg').textContent = 'QR コードを枠の中に入れてください';
+  const cv = document.createElement('canvas'), cx = cv.getContext('2d', {willReadFrequently:true});
+  const loop = () => {
+    if(stop) return;
+    if(v.videoWidth){ const w = Math.min(720, v.videoWidth), h = Math.round(v.videoHeight * w / v.videoWidth);
+      cv.width = w; cv.height = h; cx.drawImage(v, 0, 0, w, h);
+      const r = jsQR(cx.getImageData(0, 0, w, h).data, w, h, {inversionAttempts:'dontInvert'});
+      if(r && useQrText(r.data)){ sheetClose(); return; } }
+    requestAnimationFrame(loop);
+  };
+  loop();
+}
+// QR の中身「STUDYTOKEN1 リポジトリ トークン」を受け取って保存をはじめる
+function useQrText(text){
+  const m = /^STUDYTOKEN1 ([\w.-]+\/[\w.-]+) ((?:github_pat_|ghp_)\w+)$/.exec(String(text).trim());
+  if(!m) return false;
+  Object.assign(Sync.cfg, {repo:m[1], token:m[2], sha:null, last:null, err:null}); Sync.store();
+  toast('トークンを受け取りました。GitHub に保存しています…'); Sync.sync(true).then(() => renderAll());
+  return true;
+}
 
 /* ---------- ファイルに保存 / 戻す ---------- */
 async function fileSave(){
