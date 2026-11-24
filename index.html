@@ -6,479 +6,242 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
-<meta name="apple-mobile-web-app-title" content="問題チェック">
+<meta name="apple-mobile-web-app-title" content="勉強管理">
 <meta name="theme-color" content="#f5f5f7">
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="icon-180.png">
-<title>問題チェック s1〜s48</title>
+<title>勉強管理</title>
 <style>
 :root{
-  --bg:#f5f5f7; --card:#fff; --fg:#1d1d1f; --sub:#86868b; --line:#e5e5ea;
-  --o:#1f9d55; --x:#e0342f; --t:#e8a400; --run:#0a84ff;
+  --bg:#f5f5f7; --card:#fff; --fg:#1d1d1f; --sub:#6e6e73; --line:#e5e5ea;
+  --o:#1f9d55; --x:#e0342f; --t:#e8a400; --run:#0a84ff; --good:#0ca30c;
+  /* 科目の色（カテゴリ色・固定の順番） */
+  --c0:#2a78d6; --c1:#eb6834; --c2:#1baf7a; --c3:#eda100; --c4:#e87ba4; --c5:#008300; --c6:#6250d6; --c7:#e34948; --c8:#8a8a85;
 }
 @media (prefers-color-scheme: dark){
-  :root{ --bg:#000; --card:#1c1c1e; --fg:#f5f5f7; --sub:#8e8e93; --line:#2c2c2e; }
+  :root{ --bg:#000; --card:#1c1c1e; --fg:#f5f5f7; --sub:#98989d; --line:#2c2c2e;
+    --c0:#3987e5; --c1:#d95926; --c2:#199e70; --c3:#c98500; --c4:#d55181; --c5:#008300; --c6:#9085e9; --c7:#e66767; --c8:#6e6e6a; }
 }
 *{box-sizing:border-box; -webkit-tap-highlight-color:transparent}
 html,body{margin:0; background:var(--bg); color:var(--fg);
-  font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans",sans-serif;
-  -webkit-user-select:none; user-select:none}
-header{position:sticky; top:0; z-index:5; background:var(--bg);
-  padding:calc(env(safe-area-inset-top) + 8px) 12px 8px; border-bottom:1px solid var(--line)}
-.top{display:flex; gap:8px; align-items:center}
-select,button{font:inherit; color:inherit}
-select{flex:1; min-width:0; padding:8px; border-radius:10px; border:1px solid var(--line); background:var(--card); font-size:16px}
+  font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans",sans-serif; -webkit-user-select:none; user-select:none}
+button,select,input{font:inherit; color:inherit}
 .btn{padding:8px 12px; border-radius:10px; border:1px solid var(--line); background:var(--card); font-size:15px}
+.btn.sm{font-size:13px; padding:6px 10px}
+.btn.wide{display:block; width:100%; margin-top:8px; padding:12px}
+.btn.primary{background:var(--run); border-color:var(--run); color:#fff}
+.btn:disabled{opacity:.4}
+select{padding:8px; border-radius:10px; border:1px solid var(--line); background:var(--card); font-size:16px}
+
+/* 画面 */
+.view{display:none; padding:calc(env(safe-area-inset-top) + 12px) 14px calc(env(safe-area-inset-bottom) + 150px)}
+.view.show{display:block}
+h1.ttl{font-size:26px; margin:4px 2px 12px}
+h2{font-size:15px; margin:22px 4px 8px; color:var(--sub); font-weight:600}
+.cards{display:grid; grid-template-columns:repeat(2,1fr); gap:8px}
+.card{background:var(--card); border-radius:12px; padding:10px 12px}
+.card .k{font-size:12px; color:var(--sub)}
+.card .v{font-size:22px; font-weight:700; font-variant-numeric:tabular-nums}
+.card .v small,.big small{font-size:13px; font-weight:400; color:var(--sub)}
+.note{background:var(--card); border-radius:12px; padding:12px; font-size:14px; line-height:1.7}
+.big{font-size:34px; font-weight:700; font-variant-numeric:tabular-nums}
+.hint{color:var(--sub); font-size:12px; line-height:1.6}
+.empty{color:var(--sub); text-align:center; padding:16px; font-size:14px}
+.dot{display:inline-block; width:10px; height:10px; border-radius:50%; margin-right:6px; vertical-align:baseline}
+.rows{background:var(--card); border-radius:12px; overflow:hidden}
+.rowi{display:flex; align-items:center; justify-content:space-between; gap:8px; padding:12px; border-bottom:1px solid var(--line); font-size:15px}
+.rowi:last-child{border-bottom:none}
+.rowi .r{color:var(--sub); font-variant-numeric:tabular-nums; text-align:right}
+.meter{height:8px; border-radius:4px; background:var(--line); overflow:hidden; margin-top:8px}
+.meter i{display:block; height:100%; border-radius:4px; background:var(--run)}
+.meter.done i{background:var(--good)}
+.ok{color:var(--good); font-weight:600}
+.late{color:var(--x); font-weight:600}
+.subjbtns{display:grid; grid-template-columns:repeat(2,1fr); gap:8px}
+.subjbtn{display:flex; align-items:center; gap:8px; padding:14px 12px; border-radius:12px; border:1px solid var(--line); background:var(--card); font-size:16px; font-weight:600; text-align:left}
+.subjbtn .pl{margin-left:auto; color:var(--sub); font-size:14px}
+.runcard{display:flex; align-items:center; justify-content:space-between; background:var(--card); border:2px solid var(--run); border-radius:14px; padding:12px 14px}
+.runcard .big{color:var(--run)}
+.plan{background:var(--card); border-radius:12px; padding:12px; margin-bottom:8px}
+.plan .h{display:flex; justify-content:space-between; align-items:baseline; gap:8px}
+.plan .n{font-weight:700}
+.plan .s{font-size:13px; color:var(--sub); margin-top:4px; line-height:1.6}
+.book{background:var(--card); border-radius:12px; padding:12px; margin-bottom:8px}
+.book .n{font-weight:700; font-size:16px}
+.book .s{font-size:13px; color:var(--sub); margin-top:4px}
+
+/* 下のタブ */
+#tabs{position:fixed; left:0; right:0; bottom:0; z-index:8; display:flex; background:var(--bg); border-top:1px solid var(--line);
+  padding:6px 4px calc(env(safe-area-inset-bottom) + 4px)}
+#tabs button{flex:1; border:none; background:none; padding:6px 0; font-size:11px; color:var(--sub)}
+#tabs button b{display:block; font-size:20px; line-height:24px}
+#tabs button.on{color:var(--run)}
+#runbar{position:fixed; left:10px; right:10px; z-index:8; bottom:calc(env(safe-area-inset-bottom) + 66px); display:none;
+  align-items:center; gap:10px; background:var(--card); border:2px solid var(--run); border-radius:14px; padding:8px 8px 8px 14px; box-shadow:0 4px 16px rgba(0,0,0,.12)}
+#runbar.show{display:flex}
+#runbar .l{flex:1; min-width:0; font-size:14px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+#runbar .t{font-weight:700; color:var(--run); font-variant-numeric:tabular-nums; font-size:18px}
+#runbar button{border:none; border-radius:10px; background:var(--x); color:#fff; padding:8px 12px; font-weight:600}
+
+/* 重ねる画面 */
+.layer{position:fixed; inset:0; background:var(--bg); display:none; flex-direction:column; overflow-y:auto; -webkit-overflow-scrolling:touch}
+.layer.show{display:flex}
+#book{z-index:10} #detail,#ana{z-index:20} #form{z-index:30}
+.lhead{position:sticky; top:0; z-index:5; background:var(--bg); padding:calc(env(safe-area-inset-top) + 8px) 12px 8px; border-bottom:1px solid var(--line)}
+.dnav{display:flex; justify-content:space-between; align-items:center; gap:8px}
+.dnav .mid{font-weight:700; flex:1; text-align:center; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+.top{display:flex; gap:8px; align-items:center; margin-top:8px}
+.top select{flex:1; min-width:0}
 .stats{display:flex; gap:6px; margin-top:8px; font-size:14px}
 .stat{flex:1; text-align:center; padding:6px 0; border-radius:10px; background:var(--card); border:2px solid transparent}
 .stat b{display:block; font-size:18px}
 .stat.on{border-color:var(--fg)}
 .stat.o b{color:var(--o)} .stat.x b{color:var(--x)} .stat.t b{color:var(--t)}
 .total{margin-top:6px; font-size:13px; color:var(--sub); text-align:center}
-main{padding:10px 12px calc(env(safe-area-inset-bottom) + 90px)}
+.lbody{padding:10px 12px calc(env(safe-area-inset-bottom) + 90px)}
 .grid{display:flex; flex-direction:column; gap:6px}
 .tile{display:flex; align-items:center; justify-content:space-between; background:var(--card); border-radius:12px; padding:12px 16px; border:2px solid transparent}
 .tile .id{font-weight:700; font-size:17px}
-.tile .st{font-size:24px; font-weight:800; line-height:28px; color:var(--sub)}
+.tile .p{font-weight:600; color:var(--sub)}
+.tile .right{display:flex; align-items:center; gap:14px}
+.tile .tm{font-size:15px; color:var(--sub); font-variant-numeric:tabular-nums}
+.tile .st{min-width:32px; text-align:center; font-size:24px; font-weight:800; line-height:28px; color:var(--sub)}
 .tile .st.none{font-size:14px; font-weight:400}
 .tile.o{border-color:var(--o)} .tile.o .st{color:var(--o)}
 .tile.x{border-color:var(--x)} .tile.x .st{color:var(--x)}
 .tile.t{border-color:var(--t)} .tile.t .st{color:var(--t)}
 .tile.running{border-color:var(--run); border-style:dashed}
-.tile .right{display:flex; align-items:center; gap:14px}
-.tile .tm{font-size:15px; color:var(--sub); font-variant-numeric:tabular-nums}
-.tile.running .tm{color:var(--run); font-weight:600}
-.tile .st{min-width:32px; text-align:center}
-.tile .p{font-weight:600; color:var(--sub)}
+.tile.running .tm,.tile.running .st.none{color:var(--run); font-weight:600}
 .tile.cont{margin-top:-3px}
+.lfoot{position:fixed; left:0; right:0; bottom:0; display:flex; gap:6px; background:var(--bg);
+  padding:8px 12px calc(env(safe-area-inset-bottom) + 8px); border-top:1px solid var(--line)}
+.lfoot .btn{flex:1; font-size:14px; padding:8px 4px}
+
+#detail{padding:calc(env(safe-area-inset-top) + 8px) 16px calc(env(safe-area-inset-bottom) + 16px)}
+.dsub{text-align:center; color:var(--sub); font-size:13px; margin-top:18px}
+.dtitle{font-size:34px; font-weight:800; text-align:center; margin-top:2px}
+.dwhen{text-align:center; color:var(--sub); font-size:13px; margin-top:6px; line-height:1.6}
 .dsplit{display:block; margin:10px auto 0; font-size:13px; padding:6px 12px}
-.tile.running .st.none{color:var(--run)}
-#detail{position:fixed; inset:0; z-index:10; background:var(--bg); display:none; flex-direction:column;
-  padding:calc(env(safe-area-inset-top) + 8px) 16px calc(env(safe-area-inset-bottom) + 16px)}
-#detail.show{display:flex}
-.dnav{display:flex; justify-content:space-between; align-items:center}
-.dnav .btn{min-width:80px}
-.dtitle{font-size:34px; font-weight:800; text-align:center; margin-top:24px}
-.watch{font-size:72px; font-weight:300; text-align:center; font-variant-numeric:tabular-nums; margin:28px 0 8px}
+.watch{font-size:72px; font-weight:300; text-align:center; font-variant-numeric:tabular-nums; margin:20px 0 4px}
 .watch.on{color:var(--run)}
-.hint{text-align:center; color:var(--sub); font-size:12px}
-.ctrl{display:flex; justify-content:center; gap:36px; margin:28px 0}
-.circle{width:88px; height:88px; border-radius:50%; border:none; font-size:18px; font-weight:600}
+.ctrl{display:flex; justify-content:center; gap:36px; margin:24px 0}
+.circle{width:88px; height:88px; border-radius:50%; border:none; font-size:18px; font-weight:600; flex:none}
 .circle.reset{background:var(--line)}
 .circle.start{background:#1f9d55; color:#fff}
 .circle.start.on{background:#e0342f}
+.runcard .circle{width:72px; height:72px; font-size:15px}
 .dmarks{display:flex; gap:12px; margin-top:auto}
 .dm{flex:1; height:84px; border-radius:16px; border:3px solid var(--line); background:var(--card); font-size:40px; font-weight:800; color:var(--sub)}
 .dm.o.on{background:var(--o); border-color:var(--o); color:#fff}
 .dm.x.on{background:var(--x); border-color:var(--x); color:#fff}
 .dm.t.on{background:var(--t); border-color:var(--t); color:#fff}
-.dwhen{text-align:center; color:var(--sub); font-size:13px; margin-top:6px; line-height:1.6}
-#ana{position:fixed; inset:0; z-index:10; background:var(--bg); display:none; overflow-y:auto; -webkit-overflow-scrolling:touch;
-  padding:calc(env(safe-area-inset-top) + 8px) 12px calc(env(safe-area-inset-bottom) + 24px); -webkit-user-select:text; user-select:text}
-#ana.show{display:block}
-#ana h2{font-size:15px; margin:20px 4px 8px; color:var(--sub); font-weight:600}
-.cards{display:grid; grid-template-columns:repeat(2,1fr); gap:8px}
-.card{background:var(--card); border-radius:12px; padding:10px 12px}
-.card .k{font-size:12px; color:var(--sub)}
-.card .v{font-size:22px; font-weight:700; font-variant-numeric:tabular-nums}
-.card .v small{font-size:13px; font-weight:400; color:var(--sub)}
-.note{background:var(--card); border-radius:12px; padding:12px; font-size:14px; line-height:1.7}
+
 table{width:100%; border-collapse:collapse; background:var(--card); border-radius:12px; overflow:hidden; font-size:13px; font-variant-numeric:tabular-nums}
 th,td{padding:8px 4px; text-align:right; border-bottom:1px solid var(--line); white-space:nowrap}
 th:first-child,td:first-child{text-align:left; padding-left:10px}
+td.wrap{white-space:normal; text-align:left; color:var(--sub); font-size:12px; line-height:1.6}
 th{color:var(--sub); font-weight:500; font-size:12px}
 tr:last-child td{border-bottom:none}
 td.o{color:var(--o)} td.x{color:var(--x)} td.t{color:var(--t)}
-.empty{color:var(--sub); text-align:center; padding:16px; font-size:14px}
-.bk{margin-top:6px; font-size:12px; text-align:center; color:#b26a00}
-.bk:empty{display:none}
-footer{position:fixed; left:0; right:0; bottom:0; display:flex; gap:8px; background:var(--bg);
-  padding:8px 12px calc(env(safe-area-inset-bottom) + 8px); border-top:1px solid var(--line)}
-footer .btn{flex:1}
-.toast{position:fixed; left:50%; bottom:100px; transform:translateX(-50%); background:rgba(0,0,0,.8); color:#fff;
-  padding:10px 16px; border-radius:20px; font-size:14px; opacity:0; transition:opacity .2s; pointer-events:none}
+#ana .lbody,#v-log,#v-set{-webkit-user-select:text; user-select:text}
+
+/* グラフ */
+.chart{background:var(--card); border-radius:12px; padding:10px 8px 6px}
+.chart svg{display:block; width:100%; height:auto}
+.chart text{font-size:10px; fill:var(--sub)}
+.chart .gl{stroke:var(--line); stroke-width:1}
+.chart .col.sel .hit{fill:var(--line)}
+.tip{min-height:44px; font-size:13px; line-height:1.6; padding:2px 6px 8px}
+.tip b{font-variant-numeric:tabular-nums}
+.legend{display:flex; flex-wrap:wrap; gap:4px 14px; font-size:12px; padding:4px 6px 4px}
+
+/* 入力フォーム */
+#form{background:rgba(0,0,0,.35); justify-content:flex-end}
+#form .sheet{background:var(--bg); border-radius:16px 16px 0 0; padding:16px 16px calc(env(safe-area-inset-bottom) + 16px); max-height:90vh; overflow-y:auto}
+#form h3{margin:0 0 12px; font-size:18px}
+#form label{display:block; font-size:13px; color:var(--sub); margin-bottom:12px}
+#form input,#form select{display:block; width:100%; margin-top:4px; padding:10px; border-radius:10px; border:1px solid var(--line); background:var(--card); font-size:16px; -webkit-user-select:text; user-select:text; min-height:44px}
+#form small{display:block; margin-top:4px; font-size:12px}
+#form .fbtns{display:flex; gap:8px; margin-top:4px}
+#form .fbtns .btn{flex:1; padding:12px}
+#form .fdel{width:100%; margin-top:12px; color:var(--x); background:none; border:none; padding:10px}
+
+.toast{position:fixed; z-index:40; left:50%; bottom:140px; transform:translateX(-50%); background:rgba(0,0,0,.8); color:#fff;
+  padding:10px 16px; border-radius:20px; font-size:14px; opacity:0; transition:opacity .2s; pointer-events:none; max-width:90vw; text-align:center}
 .toast.show{opacity:1}
 </style>
 </head>
 <body>
-<header>
-  <div class="top">
-    <select id="round"></select>
-    <button class="btn" id="newRound">＋新しい回</button>
+<section class="view" id="v-home"></section>
+<section class="view" id="v-books"></section>
+<section class="view" id="v-log"></section>
+<section class="view" id="v-set"></section>
+
+<div id="runbar"><div class="l" id="runLabel"></div><div class="t" data-live="run"></div><button data-act="stopRun">ストップ</button></div>
+<nav id="tabs">
+  <button data-act="tab" data-tab="home"><b>⌂</b>ホーム</button>
+  <button data-act="tab" data-tab="books"><b>▤</b>教材</button>
+  <button data-act="tab" data-tab="log"><b>▥</b>記録</button>
+  <button data-act="tab" data-tab="set"><b>⚙</b>設定</button>
+</nav>
+
+<!-- 教材の問題一覧 -->
+<div class="layer" id="book">
+  <div class="lhead">
+    <div class="dnav"><button class="btn" data-act="closeBook">‹ 教材</button><div class="mid" id="bTitle"></div><button class="btn" data-act="editBook">設定</button></div>
+    <div class="top"><select id="round"></select><button class="btn" data-act="newRound">＋新しい回</button></div>
+    <div class="stats" id="bStats"></div>
+    <div class="total" id="bTotal"></div>
   </div>
-  <div class="stats" id="stats"></div>
-  <div class="total" id="total"></div>
-  <div class="bk" id="bk"></div>
-</header>
-<main id="list"></main>
-<footer>
-  <button class="btn" id="statsBtn">記録・分析</button>
-  <button class="btn" id="copy">結果をコピー</button>
-  <button class="btn" id="menu">回の管理</button>
-</footer>
-<div id="detail">
+  <div class="lbody" id="bList"></div>
+  <div class="lfoot">
+    <button class="btn" data-act="openAna">分析</button>
+    <button class="btn" data-act="copyBook">結果をコピー</button>
+    <button class="btn" data-act="roundMenu">回の管理</button>
+  </div>
+</div>
+
+<!-- 問題ごとの画面 -->
+<div class="layer" id="detail">
   <div class="dnav">
-    <button class="btn" id="back">‹ 一覧</button>
-    <div>
-      <button class="btn" id="prev">‹ 前</button>
-      <button class="btn" id="next">次 ›</button>
-    </div>
+    <button class="btn" data-act="closeDetail">‹ 一覧</button>
+    <div><button class="btn" data-act="prevQ" id="prevQ">‹ 前</button> <button class="btn" data-act="nextQ" id="nextQ">次 ›</button></div>
   </div>
-  <div class="dtitle" id="dtitle"></div>
-  <div class="dwhen" id="dwhen"></div>
-  <button class="btn dsplit" id="split"></button>
-  <div class="watch" id="watch" data-act="edit">0:00</div>
-  <div class="hint">時間をタップすると手で直せます</div>
+  <div class="dsub" id="dSub"></div>
+  <div class="dtitle" id="dTitle"></div>
+  <div class="dwhen" id="dWhen"></div>
+  <button class="btn dsplit" data-act="split" id="dSplit"></button>
+  <div class="watch" id="watch" data-act="editTime">0:00</div>
+  <div class="hint" style="text-align:center">時間をタップすると手で直せます</div>
   <div class="ctrl">
-    <button class="circle reset" id="reset">リセット</button>
-    <button class="circle start" id="start">スタート</button>
+    <button class="circle reset" data-act="resetQ">リセット</button>
+    <button class="circle start" data-act="toggleQ" id="startQ">スタート</button>
   </div>
   <div class="dmarks">
-    <button class="dm o" data-m="o">○</button>
-    <button class="dm x" data-m="x">×</button>
-    <button class="dm t" data-m="t">△</button>
+    <button class="dm o" data-act="mark" data-m="o">○</button>
+    <button class="dm x" data-act="mark" data-m="x">×</button>
+    <button class="dm t" data-act="mark" data-m="t">△</button>
   </div>
 </div>
-<div id="ana">
-  <div class="dnav"><button class="btn" id="anaBack">‹ 一覧</button><div style="font-weight:700">記録・分析</div><div style="width:80px"></div></div>
-  <h2>データの保存（ファイル）</h2>
-  <div class="note">
-    <div id="bkInfo"></div>
-    <div style="display:flex; gap:8px; margin-top:10px">
-      <button class="btn" id="bkSave" style="flex:1">ファイルに保存</button>
-      <button class="btn" id="bkLoad" style="flex:1">ファイルから戻す</button>
-    </div>
-    <input type="file" id="bkFile" accept=".json,application/json" style="display:none">
-    <div class="hint" style="text-align:left; margin-top:8px">「ファイルに保存」→「"ファイル"に保存」で iCloud Drive などに置けます</div>
+
+<!-- 教材の分析 -->
+<div class="layer" id="ana">
+  <div class="lhead"><div class="dnav"><button class="btn" data-act="closeAna">‹ 一覧</button><div class="mid" id="aTitle"></div><div style="width:60px"></div></div></div>
+  <div class="lbody" id="aBody"></div>
+</div>
+
+<!-- 入力フォーム -->
+<div class="layer" id="form">
+  <div class="sheet">
+    <h3></h3>
+    <div class="fields"></div>
+    <div class="fbtns"><button class="btn" data-f="cancel">やめる</button><button class="btn primary" data-f="ok">決定</button></div>
+    <button class="fdel" data-f="del"></button>
   </div>
-  <div id="anaBody"></div>
 </div>
 <div class="toast" id="toast"></div>
+<input type="file" id="bkFile" accept=".json,application/json" style="display:none">
 
-<script>
-const BASE = Array.from({length:48}, (_,i) => 's' + (i+1));
-const KEY = 's48-check-v1';
-// 小問に分けた問題は s1-1, s1-2 … を1つずつの単位として扱う（db.parts = {s1: 2}）
-let IDS = [], N = 0;
-function buildIds(){
-  IDS = []; const P = db.parts || {};
-  BASE.forEach(b => { const k = P[b] || 1; if(k === 1) IDS.push(b); else for(let i = 1; i <= k; i++) IDS.push(b + '-' + i); });
-  N = IDS.length;
-}
-function baseOf(id){ return id.split('-')[0]; }
-function lab(id){ const [b,p] = id.split('-'); return p ? `${b} (${p})` : b; }
-const MARK = {o:'○', x:'×', t:'△'};
-
-let db = load();
-buildIds();
-let filter = null; // null | 'o' | 'x' | 't' | 'none'
-
-function newRound(name){ return {name, items:{}, running:null}; }
-function load(){
-  try{ const d = JSON.parse(localStorage.getItem(KEY)); if(d && d.rounds && d.rounds.length) return d; }catch(e){}
-  return {cur:0, rounds:[newRound('1回目')]};
-}
-function save(){ localStorage.setItem(KEY, JSON.stringify(db)); }
-function R(){ return db.rounds[db.cur]; }
-function item(id){ return R().items[id] || (R().items[id] = {t:0, m:null}); }
-
-// 計測中の経過も含めた時間(ms)
-function elapsed(id){
-  const it = R().items[id]; let t = it ? it.t : 0;
-  const run = R().running;
-  if(run && run.id === id) t += Date.now() - run.start;
-  return t;
-}
-function fmt(ms){
-  const s = Math.floor(ms/1000), h = Math.floor(s/3600), m = Math.floor(s%3600/60), ss = s%60;
-  return (h ? h + ':' + String(m).padStart(2,'0') : m) + ':' + String(ss).padStart(2,'0');
-}
-function stop(){
-  const run = R().running; if(!run) return;
-  item(run.id).t += Date.now() - run.start;
-  R().running = null;
-}
-function toggleRun(id){
-  const run = R().running;
-  const same = run && run.id === id;
-  stop();
-  if(!same){ R().running = {id, start: Date.now()}; if(!item(id).s) item(id).s = Date.now(); }
-  save(); render();
-}
-function setMark(id, m){
-  const it = item(id);
-  it.m = it.m === m ? null : m;
-  if(it.m) it.at = Date.now(); else delete it.at;
-  // 印を付けたら、その問題の計測は止める
-  if(it.m && R().running && R().running.id === id) stop();
-  save(); render();
-}
-function editTime(id){
-  const cur = fmt(elapsed(id));
-  const v = prompt(lab(id) + ' の時間（例 3:25 / 秒数 / 空で0）', cur);
-  if(v === null) return;
-  const s = v.trim();
-  let sec;
-  if(s === '') sec = 0;
-  else if(/^\d+(:\d{1,2}){0,2}$/.test(s)) sec = s.split(':').reduce((a,b) => a*60 + Number(b), 0);
-  else { toast('形式が違います'); return; }
-  if(R().running && R().running.id === id) R().running = null;
-  item(id).t = sec * 1000;
-  save(); render();
-}
-
-function render(){
-  // 回の選択
-  const sel = document.getElementById('round');
-  sel.innerHTML = db.rounds.map((r,i) => `<option value="${i}">${esc(r.name)}</option>`).join('');
-  sel.value = db.cur;
-
-  // 集計
-  const c = {o:0, x:0, t:0, none:0};
-  let total = 0;
-  IDS.forEach(id => { const it = R().items[id]; c[it && it.m ? it.m : 'none']++; total += elapsed(id); });
-  document.getElementById('stats').innerHTML =
-    ['o','x','t','none'].map(k => `<div class="stat ${k}${filter===k?' on':''}" data-f="${k}"><b>${c[k]}</b>${k==='none'?'未':MARK[k]}</div>`).join('');
-  const done = N - c.none;
-  const hasData = db.rounds.some(r => Object.values(r.items).some(it => it.m || it.t));
-  const bkDays = db.backupAt ? Math.floor((Date.now() - db.backupAt) / 86400000) : null;
-  document.getElementById('bk').textContent = hasData && (bkDays === null || bkDays >= 3)
-    ? (bkDays === null ? 'まだファイルに保存していません' : `最後のファイル保存から ${bkDays} 日たっています`) + '（記録・分析 → ファイルに保存）' : '';
-  document.getElementById('total').textContent =
-    `合計 ${fmt(total)}　・　${done}/${N}問` + (done ? `　・　正答率 ${Math.round(c.o/done*100)}%` : '') +
-    (filter ? '　（絞り込み中：もう一度タップで解除）' : '');
-
-  // 一覧（問題と状態だけ）
-  const run = R().running;
-  document.getElementById('list').innerHTML = '<div class="grid">' + IDS.filter(id => {
-    if(!filter) return true;
-    const m = R().items[id] && R().items[id].m;
-    return filter === 'none' ? !m : m === filter;
-  }).map(id => {
-    const m = (R().items[id] || {}).m; const on = run && run.id === id;
-    const t = elapsed(id); const p = id.split('-')[1];
-    return `<div class="tile${m?' '+m:''}${on?' running':''}${p?' sub':''}${p > 1 ? ' cont' : ''}" data-id="${id}">
-      <div class="id">${baseOf(id)}${p ? ` <span class="p">(${p})</span>` : ''}</div>
-      <div class="right"><span class="tm">${t || on ? fmt(t) : ''}</span>
-      <span class="st${m?'':' none'}">${m ? MARK[m] : (on ? '計測中' : 'まだ')}</span></div>
-    </div>`;
-  }).join('') + '</div>';
-  renderDetail();
-}
-
-// 問題の画面
-let openId = null;
-function openDetail(id){ openId = id; document.getElementById('detail').classList.add('show'); renderDetail(); }
-function renderDetail(){
-  if(!openId) return;
-  const it = R().items[openId] || {}; const on = R().running && R().running.id === openId;
-  document.getElementById('dtitle').textContent = lab(openId);
-  const k = (db.parts || {})[baseOf(openId)] || 1;
-  document.getElementById('split').textContent = k > 1 ? `小問の数を変える（今 ${k} 個）` : '(1)(2)… の小問に分ける';
-  document.getElementById('dwhen').innerHTML =
-    (it.s ? '開始 ' + dt(it.s) : 'まだ始めていません') + (it.at ? '<br>' + MARK[it.m] + 'を付けた日時 ' + dt(it.at) : '');
-  const w = document.getElementById('watch');
-  w.textContent = fmt(elapsed(openId)); w.classList.toggle('on', !!on);
-  const st = document.getElementById('start');
-  st.textContent = on ? 'ストップ' : (elapsed(openId) ? '再開' : 'スタート'); st.classList.toggle('on', !!on);
-  document.querySelectorAll('.dm').forEach(b => b.classList.toggle('on', it.m === b.dataset.m));
-  const i = IDS.indexOf(openId);
-  document.getElementById('prev').disabled = i === 0;
-  document.getElementById('next').disabled = i === N-1;
-}
-function tick(){
-  const run = R().running; if(!run) return;
-  if(openId === run.id) document.getElementById('watch').textContent = fmt(elapsed(run.id));
-  const tm = document.querySelector(`.tile[data-id="${run.id}"] .tm`); if(tm) tm.textContent = fmt(elapsed(run.id));
-  let total = 0; IDS.forEach(id => total += elapsed(id));
-  const tt = document.getElementById('total');
-  tt.textContent = tt.textContent.replace(/^合計 [\d:]+/, '合計 ' + fmt(total));
-}
-setInterval(tick, 250);
-
-document.getElementById('list').addEventListener('click', e => {
-  const t = e.target.closest('.tile'); if(t) openDetail(t.dataset.id);
-});
-document.getElementById('back').addEventListener('click', () => {
-  openId = null; document.getElementById('detail').classList.remove('show'); render();
-});
-document.getElementById('prev').addEventListener('click', () => { const i = IDS.indexOf(openId); if(i > 0) openDetail(IDS[i-1]); });
-document.getElementById('next').addEventListener('click', () => { const i = IDS.indexOf(openId); if(i < N-1) openDetail(IDS[i+1]); });
-document.getElementById('split').addEventListener('click', () => {
-  const b = baseOf(openId); db.parts = db.parts || {};
-  const cur = db.parts[b] || 1;
-  const v = prompt(`${b} の小問の数（1 にすると分けない）`, cur > 1 ? cur : 2);
-  if(v === null) return;
-  const k = parseInt(v, 10);
-  if(!(k >= 1 && k <= 20)){ toast('1〜20 の数で入れてください'); return; }
-  if(k === cur) return;
-  const ren = (r, from, to) => { if(r.items[from]){ r.items[to] = r.items[from]; delete r.items[from]; } if(r.running && r.running.id === from) r.running.id = to; };
-  // 消える小問に記録があれば確認
-  const gone = []; for(let i = Math.max(k,1) + 1; i <= cur; i++) gone.push(b + '-' + i);
-  const lost = db.rounds.some(r => gone.some(id => (r.items[id] && (r.items[id].m || r.items[id].t)) || (r.running && r.running.id === id)));
-  if(lost && !confirm(`${gone.map(lab).join('、')} の記録が消えます。よろしいですか？`)) return;
-  db.rounds.forEach(r => {
-    gone.forEach(id => { delete r.items[id]; if(r.running && r.running.id === id) r.running = null; });
-    if(cur === 1 && k > 1) ren(r, b, b + '-1');      // 今までの記録は (1) に移す
-    if(cur > 1 && k === 1) ren(r, b + '-1', b);      // 分けるのをやめたら (1) の記録を戻す
-  });
-  if(k === 1) delete db.parts[b]; else db.parts[b] = k;
-  buildIds();
-  if(!IDS.includes(openId)) openId = IDS.includes(b) ? b : b + '-1';
-  save(); render();
-});
-document.getElementById('start').addEventListener('click', () => toggleRun(openId));
-document.getElementById('reset').addEventListener('click', () => {
-  if(R().running && R().running.id === openId) R().running = null;
-  item(openId).t = 0; delete item(openId).s; save(); render();
-});
-document.getElementById('watch').addEventListener('click', () => editTime(openId));
-document.querySelectorAll('.dm').forEach(b => b.addEventListener('click', () => setMark(openId, b.dataset.m)));
-document.getElementById('stats').addEventListener('click', e => {
-  const s = e.target.closest('[data-f]'); if(!s) return;
-  filter = filter === s.dataset.f ? null : s.dataset.f; render();
-});
-document.getElementById('round').addEventListener('change', e => {
-  stop(); db.cur = Number(e.target.value); save(); render();
-});
-document.getElementById('newRound').addEventListener('click', () => {
-  const name = prompt('新しい回の名前', (db.rounds.length+1) + '回目');
-  if(!name) return;
-  stop(); db.rounds.push(newRound(name.trim())); db.cur = db.rounds.length-1; filter = null; save(); render();
-});
-document.getElementById('menu').addEventListener('click', () => {
-  const v = prompt(`「${R().name}」をどうしますか？\n1: 名前を変える\n2: この回の記録を全部消す\n3: この回を削除する`);
-  if(v === '1'){
-    const n = prompt('新しい名前', R().name); if(n){ R().name = n.trim(); save(); render(); }
-  }else if(v === '2'){
-    if(confirm(`「${R().name}」の時間と印を全部消します。よろしいですか？`)){ R().items = {}; R().running = null; save(); render(); }
-  }else if(v === '3'){
-    if(db.rounds.length === 1){ toast('最後の1つは削除できません（2で記録を消せます）'); return; }
-    if(confirm(`「${R().name}」を削除します。よろしいですか？`)){ db.rounds.splice(db.cur,1); db.cur = 0; save(); render(); }
-  }
-});
-document.getElementById('copy').addEventListener('click', async () => {
-  const lines = [R().name];
-  IDS.forEach(id => { const it = R().items[id] || {}; lines.push(`${lab(id)}\t${fmt(elapsed(id))}\t${it.m ? MARK[it.m] : ''}\t${it.at ? dt(it.at) : ''}`); });
-  lines.push(document.getElementById('total').textContent.replace(/　（.*$/, ''));
-  const text = lines.join('\n');
-  try{ await navigator.clipboard.writeText(text); toast('コピーしました（メモ等に貼り付けできます）'); }
-  catch(e){ prompt('コピーしてください', text); }
-});
-
-const WD = '日月火水木金土';
-function pad(n){ return String(n).padStart(2,'0'); }
-function dt(ts){ const d = new Date(ts); return `${d.getMonth()+1}/${d.getDate()}(${WD[d.getDay()]}) ${d.getHours()}:${pad(d.getMinutes())}`; }
-function dayKey(ts){ const d = new Date(ts); return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`; }
-function dayLabel(k){ const d = new Date(k + 'T00:00:00'); return `${d.getMonth()+1}/${d.getDate()}(${WD[d.getDay()]})`; }
-function pct(a,b){ return b ? Math.round(a/b*100) + '%' : '—'; }
-function card(k,v){ return `<div class="card"><div class="k">${k}</div><div class="v">${v}</div></div>`; }
-
-// 印を付けた問題を全部の回から集める（日時のない古い記録は日別・ペースに入れない）
-function attempts(){
-  const out = [];
-  db.rounds.forEach((r,ri) => IDS.forEach(id => {
-    const it = r.items[id];
-    if(it && it.m) out.push({ri, id, m:it.m, t:it.t, at:it.at});
-  }));
-  return out;
-}
-function renderAna(){
-  const A = attempts();
-  const cnt = a => ({o:a.filter(x=>x.m==='o').length, x:a.filter(x=>x.m==='x').length, t:a.filter(x=>x.m==='t').length, n:a.length,
-                     time:a.reduce((s,x)=>s+x.t,0), timed:a.filter(x=>x.t>0).length});
-  const all = cnt(A);
-  const dated = A.filter(x => x.at);
-  const days = {};
-  dated.forEach(x => (days[dayKey(x.at)] = days[dayKey(x.at)] || []).push(x));
-  const dayKeys = Object.keys(days).sort();
-  let h = '';
-
-  // 全体
-  h += '<h2>全体（すべての回）</h2><div class="cards">';
-  h += card('解いた問題', `${all.n}<small> 問</small>`);
-  h += card('正答率（○の割合）', pct(all.o, all.n));
-  h += card('○ / × / △', `<span style="color:var(--o)">${all.o}</span> / <span style="color:var(--x)">${all.x}</span> / <span style="color:var(--t)">${all.t}</span>`);
-  h += card('1問の平均時間', all.timed ? fmt(all.time/all.timed) : '—');
-  h += card('合計時間', fmt(all.time));
-  h += card('勉強した日数', `${dayKeys.length}<small> 日</small>`);
-  h += '</div>';
-
-  // ペース（今の回）
-  const r = R(); const cur = cnt(A.filter(x => x.ri === db.cur));
-  const curDated = dated.filter(x => x.ri === db.cur);
-  h += `<h2>ペース（${esc(r.name)}）</h2>`;
-  if(curDated.length){
-    const first = Math.min(...curDated.map(x=>x.at));
-    const curDays = new Set(curDated.map(x => dayKey(x.at))).size;
-    const spanDays = Math.floor((new Date(dayKey(Date.now())+'T00:00:00') - new Date(dayKey(first)+'T00:00:00'))/86400000) + 1;
-    const perDay = curDated.length / spanDays;
-    const perStudyDay = curDated.length / curDays;
-    const left = N - cur.n;
-    let finish = '';
-    if(left === 0) finish = '全問終わりました';
-    else { const d = Math.ceil(left / perDay); const f = new Date(Date.now() + d*86400000);
-      finish = `このペースだと、残り ${left} 問はあと約 <b>${d} 日</b>（${f.getMonth()+1}/${f.getDate()}ごろ）で終わります`; }
-    h += `<div class="cards">${card('進み具合', `${cur.n}<small> / ${N} 問</small>`)}${card('正答率', pct(cur.o, cur.n))}
-      ${card('1日あたり（始めた日から）', `${perDay.toFixed(1)}<small> 問</small>`)}${card('勉強した日の平均', `${perStudyDay.toFixed(1)}<small> 問</small>`)}</div>
-      <div class="note" style="margin-top:8px">${dt(first).split(' ')[0]} に始めて ${spanDays} 日目（うち勉強した日 ${curDays} 日）<br>${finish}</div>`;
-  } else h += '<div class="note empty">この回は、まだ日時つきの記録がありません</div>';
-
-  // 日別
-  h += '<h2>日別</h2>';
-  if(dayKeys.length){
-    h += '<table><tr><th>日付</th><th>問</th><th>○</th><th>×</th><th>△</th><th>正答率</th><th>時間</th><th>平均</th></tr>';
-    dayKeys.slice().reverse().forEach(k => { const c = cnt(days[k]);
-      h += `<tr><td>${dayLabel(k)}</td><td>${c.n}</td><td class="o">${c.o}</td><td class="x">${c.x}</td><td class="t">${c.t}</td><td>${pct(c.o,c.n)}</td><td>${fmt(c.time)}</td><td>${c.timed?fmt(c.time/c.timed):'—'}</td></tr>`; });
-    h += '</table>';
-  } else h += '<div class="note empty">まだ記録がありません</div>';
-
-  // 回別
-  h += '<h2>回ごと</h2><table><tr><th>回</th><th>済</th><th>正答率</th><th>○</th><th>×</th><th>△</th><th>平均</th></tr>';
-  db.rounds.forEach((rr,i) => { const c = cnt(A.filter(x => x.ri === i));
-    h += `<tr><td>${esc(rr.name)}</td><td>${c.n}/${N}</td><td>${pct(c.o,c.n)}</td><td class="o">${c.o}</td><td class="x">${c.x}</td><td class="t">${c.t}</td><td>${c.timed?fmt(c.time/c.timed):'—'}</td></tr>`; });
-  h += '</table>';
-
-  if(A.length > dated.length) h += `<div class="hint" style="margin-top:12px">日時の記録を始める前に付けた ${A.length - dated.length} 問は、日別とペースには入っていません</div>`;
-  h += '<div class="hint" style="margin-top:8px">正答率 = ○ ÷ 解いた問題（△は正解に入れていません）<br>日付は○×△を付けた日で数えています</div>';
-  document.getElementById('anaBody').innerHTML = h;
-  document.getElementById('bkInfo').textContent = db.backupAt ? '最後に保存した日時: ' + dt(db.backupAt) : 'まだファイルに保存していません';
-}
-document.getElementById('statsBtn').addEventListener('click', () => { renderAna(); document.getElementById('ana').classList.add('show'); });
-document.getElementById('anaBack').addEventListener('click', () => document.getElementById('ana').classList.remove('show'));
-
-function esc(s){ return String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
-let tt; function toast(msg){ const t = document.getElementById('toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(tt); tt = setTimeout(() => t.classList.remove('show'), 1800); }
-
-// ファイルに保存 / ファイルから戻す
-document.getElementById('bkSave').addEventListener('click', async () => {
-  const now = new Date();
-  const name = `s48-check_${dayKey(now)}_${pad(now.getHours())}${pad(now.getMinutes())}.json`;
-  const prev = db.backupAt; db.backupAt = now.getTime();
-  const text = JSON.stringify({app:'s48-check', version:1, savedAt:now.toISOString(), data:db}, null, 1);
-  const file = new File([text], name, {type:'application/json'});
-  try{
-    if(navigator.canShare && navigator.canShare({files:[file]})) await navigator.share({files:[file]});
-    else { const a = document.createElement('a'); a.href = URL.createObjectURL(file); a.download = name; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 5000); }
-    save(); render(); renderAna(); toast('保存しました');
-  }catch(e){ db.backupAt = prev; if(e.name !== 'AbortError') toast('保存できませんでした'); }
-});
-document.getElementById('bkLoad').addEventListener('click', () => document.getElementById('bkFile').click());
-document.getElementById('bkFile').addEventListener('change', async e => {
-  const f = e.target.files[0]; e.target.value = ''; if(!f) return;
-  try{
-    const j = JSON.parse(await f.text());
-    const d = j && j.app === 's48-check' ? j.data : null;
-    if(!d || !Array.isArray(d.rounds) || !d.rounds.length) throw 0;
-    const n = d.rounds.reduce((a,r) => a + Object.values(r.items || {}).filter(it => it.m).length, 0);
-    if(!confirm(`${f.name}\n（${d.rounds.length}回分・印 ${n} 問）\n\n今の記録をこのファイルの内容に置き換えます。よろしいですか？`)) return;
-    d.cur = Math.min(d.cur || 0, d.rounds.length - 1);
-    db = d; buildIds(); save(); filter = null; render(); renderAna(); toast('ファイルから戻しました');
-  }catch(err){ toast('このアプリの保存ファイルではありません'); }
-});
-
-render();
-if('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js');
-</script>
+<script src="app.js"></script>
 </body>
 </html>

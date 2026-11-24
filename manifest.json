@@ -1,6 +1,6 @@
 {
-  "name": "問題チェック s1〜s48",
-  "short_name": "問題チェック",
+  "name": "勉強管理",
+  "short_name": "勉強管理",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
