@@ -45,6 +45,13 @@ main{padding:10px 12px calc(env(safe-area-inset-bottom) + 90px)}
 .tile.x{border-color:var(--x)} .tile.x .st{color:var(--x)}
 .tile.t{border-color:var(--t)} .tile.t .st{color:var(--t)}
 .tile.running{border-color:var(--run); border-style:dashed}
+.tile .right{display:flex; align-items:center; gap:14px}
+.tile .tm{font-size:15px; color:var(--sub); font-variant-numeric:tabular-nums}
+.tile.running .tm{color:var(--run); font-weight:600}
+.tile .st{min-width:32px; text-align:center}
+.tile .p{font-weight:600; color:var(--sub)}
+.tile.cont{margin-top:-3px}
+.dsplit{display:block; margin:10px auto 0; font-size:13px; padding:6px 12px}
 .tile.running .st.none{color:var(--run)}
 #detail{position:fixed; inset:0; z-index:10; background:var(--bg); display:none; flex-direction:column;
   padding:calc(env(safe-area-inset-top) + 8px) 16px calc(env(safe-area-inset-bottom) + 16px)}
@@ -119,6 +126,7 @@ footer .btn{flex:1}
   </div>
   <div class="dtitle" id="dtitle"></div>
   <div class="dwhen" id="dwhen"></div>
+  <button class="btn dsplit" id="split"></button>
   <div class="watch" id="watch" data-act="edit">0:00</div>
   <div class="hint">時間をタップすると手で直せます</div>
   <div class="ctrl">
@@ -148,12 +156,21 @@ footer .btn{flex:1}
 <div class="toast" id="toast"></div>
 
 <script>
-const N = 48;
+const BASE = Array.from({length:48}, (_,i) => 's' + (i+1));
 const KEY = 's48-check-v1';
-const IDS = Array.from({length:N}, (_,i) => 's' + (i+1));
+// 小問に分けた問題は s1-1, s1-2 … を1つずつの単位として扱う（db.parts = {s1: 2}）
+let IDS = [], N = 0;
+function buildIds(){
+  IDS = []; const P = db.parts || {};
+  BASE.forEach(b => { const k = P[b] || 1; if(k === 1) IDS.push(b); else for(let i = 1; i <= k; i++) IDS.push(b + '-' + i); });
+  N = IDS.length;
+}
+function baseOf(id){ return id.split('-')[0]; }
+function lab(id){ const [b,p] = id.split('-'); return p ? `${b} (${p})` : b; }
 const MARK = {o:'○', x:'×', t:'△'};
 
 let db = load();
+buildIds();
 let filter = null; // null | 'o' | 'x' | 't' | 'none'
 
 function newRound(name){ return {name, items:{}, running:null}; }
@@ -198,7 +215,7 @@ function setMark(id, m){
 }
 function editTime(id){
   const cur = fmt(elapsed(id));
-  const v = prompt(id + ' の時間（例 3:25 / 秒数 / 空で0）', cur);
+  const v = prompt(lab(id) + ' の時間（例 3:25 / 秒数 / 空で0）', cur);
   if(v === null) return;
   const s = v.trim();
   let sec;
@@ -239,9 +256,11 @@ function render(){
     return filter === 'none' ? !m : m === filter;
   }).map(id => {
     const m = (R().items[id] || {}).m; const on = run && run.id === id;
-    return `<div class="tile${m?' '+m:''}${on?' running':''}" data-id="${id}">
-      <div class="id">${id}</div>
-      <div class="st${m?'':' none'}">${m ? MARK[m] : (on ? '計測中' : 'まだ')}</div>
+    const t = elapsed(id); const p = id.split('-')[1];
+    return `<div class="tile${m?' '+m:''}${on?' running':''}${p?' sub':''}${p > 1 ? ' cont' : ''}" data-id="${id}">
+      <div class="id">${baseOf(id)}${p ? ` <span class="p">(${p})</span>` : ''}</div>
+      <div class="right"><span class="tm">${t || on ? fmt(t) : ''}</span>
+      <span class="st${m?'':' none'}">${m ? MARK[m] : (on ? '計測中' : 'まだ')}</span></div>
     </div>`;
   }).join('') + '</div>';
   renderDetail();
@@ -253,7 +272,9 @@ function openDetail(id){ openId = id; document.getElementById('detail').classLis
 function renderDetail(){
   if(!openId) return;
   const it = R().items[openId] || {}; const on = R().running && R().running.id === openId;
-  document.getElementById('dtitle').textContent = openId;
+  document.getElementById('dtitle').textContent = lab(openId);
+  const k = (db.parts || {})[baseOf(openId)] || 1;
+  document.getElementById('split').textContent = k > 1 ? `小問の数を変える（今 ${k} 個）` : '(1)(2)… の小問に分ける';
   document.getElementById('dwhen').innerHTML =
     (it.s ? '開始 ' + dt(it.s) : 'まだ始めていません') + (it.at ? '<br>' + MARK[it.m] + 'を付けた日時 ' + dt(it.at) : '');
   const w = document.getElementById('watch');
@@ -268,6 +289,7 @@ function renderDetail(){
 function tick(){
   const run = R().running; if(!run) return;
   if(openId === run.id) document.getElementById('watch').textContent = fmt(elapsed(run.id));
+  const tm = document.querySelector(`.tile[data-id="${run.id}"] .tm`); if(tm) tm.textContent = fmt(elapsed(run.id));
   let total = 0; IDS.forEach(id => total += elapsed(id));
   const tt = document.getElementById('total');
   tt.textContent = tt.textContent.replace(/^合計 [\d:]+/, '合計 ' + fmt(total));
@@ -282,6 +304,29 @@ document.getElementById('back').addEventListener('click', () => {
 });
 document.getElementById('prev').addEventListener('click', () => { const i = IDS.indexOf(openId); if(i > 0) openDetail(IDS[i-1]); });
 document.getElementById('next').addEventListener('click', () => { const i = IDS.indexOf(openId); if(i < N-1) openDetail(IDS[i+1]); });
+document.getElementById('split').addEventListener('click', () => {
+  const b = baseOf(openId); db.parts = db.parts || {};
+  const cur = db.parts[b] || 1;
+  const v = prompt(`${b} の小問の数（1 にすると分けない）`, cur > 1 ? cur : 2);
+  if(v === null) return;
+  const k = parseInt(v, 10);
+  if(!(k >= 1 && k <= 20)){ toast('1〜20 の数で入れてください'); return; }
+  if(k === cur) return;
+  const ren = (r, from, to) => { if(r.items[from]){ r.items[to] = r.items[from]; delete r.items[from]; } if(r.running && r.running.id === from) r.running.id = to; };
+  // 消える小問に記録があれば確認
+  const gone = []; for(let i = Math.max(k,1) + 1; i <= cur; i++) gone.push(b + '-' + i);
+  const lost = db.rounds.some(r => gone.some(id => (r.items[id] && (r.items[id].m || r.items[id].t)) || (r.running && r.running.id === id)));
+  if(lost && !confirm(`${gone.map(lab).join('、')} の記録が消えます。よろしいですか？`)) return;
+  db.rounds.forEach(r => {
+    gone.forEach(id => { delete r.items[id]; if(r.running && r.running.id === id) r.running = null; });
+    if(cur === 1 && k > 1) ren(r, b, b + '-1');      // 今までの記録は (1) に移す
+    if(cur > 1 && k === 1) ren(r, b + '-1', b);      // 分けるのをやめたら (1) の記録を戻す
+  });
+  if(k === 1) delete db.parts[b]; else db.parts[b] = k;
+  buildIds();
+  if(!IDS.includes(openId)) openId = IDS.includes(b) ? b : b + '-1';
+  save(); render();
+});
 document.getElementById('start').addEventListener('click', () => toggleRun(openId));
 document.getElementById('reset').addEventListener('click', () => {
   if(R().running && R().running.id === openId) R().running = null;
@@ -314,7 +359,7 @@ document.getElementById('menu').addEventListener('click', () => {
 });
 document.getElementById('copy').addEventListener('click', async () => {
   const lines = [R().name];
-  IDS.forEach(id => { const it = R().items[id] || {}; lines.push(`${id}\t${fmt(elapsed(id))}\t${it.m ? MARK[it.m] : ''}\t${it.at ? dt(it.at) : ''}`); });
+  IDS.forEach(id => { const it = R().items[id] || {}; lines.push(`${lab(id)}\t${fmt(elapsed(id))}\t${it.m ? MARK[it.m] : ''}\t${it.at ? dt(it.at) : ''}`); });
   lines.push(document.getElementById('total').textContent.replace(/　（.*$/, ''));
   const text = lines.join('\n');
   try{ await navigator.clipboard.writeText(text); toast('コピーしました（メモ等に貼り付けできます）'); }
@@ -428,7 +473,7 @@ document.getElementById('bkFile').addEventListener('change', async e => {
     const n = d.rounds.reduce((a,r) => a + Object.values(r.items || {}).filter(it => it.m).length, 0);
     if(!confirm(`${f.name}\n（${d.rounds.length}回分・印 ${n} 問）\n\n今の記録をこのファイルの内容に置き換えます。よろしいですか？`)) return;
     d.cur = Math.min(d.cur || 0, d.rounds.length - 1);
-    db = d; save(); filter = null; render(); renderAna(); toast('ファイルから戻しました');
+    db = d; buildIds(); save(); filter = null; render(); renderAna(); toast('ファイルから戻しました');
   }catch(err){ toast('このアプリの保存ファイルではありません'); }
 });
 
