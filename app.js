@@ -378,7 +378,7 @@ function renderSet(){
     h += '<div class="hint" style="margin-top:6px">記録を変えると数秒後に自動で GitHub に保存されます。アプリを開いたときは GitHub の新しい記録を読み込みます</div>';
   } else h += 'まだ設定していません。設定すると、記録が GitHub の非公開リポジトリに自動で保存され、履歴を消しても・別の端末でも戻せます。<button class="btn wide primary" data-act="syncSetup">GitHub に保存する設定</button>';
   h += `<details style="margin-top:8px"><summary class="hint" style="font-size:13px">トークンの作り方</summary><div class="hint" style="font-size:13px; margin-top:6px">
-    1. <a href="https://github.com/settings/personal-access-tokens/new" target="_blank" rel="noopener">GitHub のトークン作成ページ</a>を開く（GitHub にログインした状態で）<br>
+    1. <a href="https://github.com/settings/personal-access-tokens/new?name=%E5%8B%89%E5%BC%B7%E7%AE%A1%E7%90%86&amp;target_name=${esc(c.repo.split('/')[0])}&amp;expires_in=366&amp;contents=write" target="_blank" rel="noopener">GitHub のトークン作成ページ</a>を開く（GitHub にログインした状態で）<br>
     2. Token name に「勉強管理」、Expiration は選べるいちばん長い期間<br>
     3. Repository access で「Only select repositories」→ <b>${esc(c.repo.split('/')[1] || '')}</b> を選ぶ<br>
     4. Permissions の Repository permissions で <b>Contents</b> を「Read and write」にする<br>
@@ -598,6 +598,38 @@ $('#bkFile').addEventListener('change', async e => {
   }catch(err){ toast('このアプリの保存ファイルではありません'); }
 });
 
+/* ---------- GitHub で読めるまとめ（README.md） ---------- */
+function mdReport(){
+  const m = studyByDay(), t = today(), ws = weekStart(t), mst = t.slice(0, 8) + '01';
+  const c = x => String(x).replace(/\|/g, '｜').replace(/\n/g, ' ');
+  const L = [`# 勉強の記録`, '', `最終更新: ${new Date().getFullYear()}/${dt(Date.now())}（アプリから自動で書き換えています。記録の本体は data.json）`, ''];
+  const ex = db.exams.filter(e => daysBetween(t, e.date) >= 0).sort((a, b) => a.date < b.date ? -1 : 1);
+  if(ex.length){ L.push('## 試験まで', ''); ex.forEach(e => L.push(`- **${c(e.name)}**（${e.date.replace(/-/g, '/')}）あと ${daysBetween(t, e.date)} 日`)); L.push(''); }
+  L.push('## 勉強時間', '', '| | 今日 | 今週 | 今月 | これまで |', '|---|---:|---:|---:|---:|');
+  L.push(`| **合計** | ${fmtH(rangeTotal(m, t, t))} | ${fmtH(rangeTotal(m, ws, t))} | ${fmtH(rangeTotal(m, mst, t))} | ${fmtH(rangeTotal(m, '0000', t))} |`);
+  db.subjects.forEach(s => L.push(`| ${c(s.name)} | ${fmtH(rangeTotal(m, t, t, s.id))} | ${fmtH(rangeTotal(m, ws, t, s.id))} | ${fmtH(rangeTotal(m, mst, t, s.id))} | ${fmtH(rangeTotal(m, '0000', t, s.id))} |`));
+  const dk = Object.keys(m).filter(k => sumObj(m[k]) >= 60000).sort().reverse().slice(0, 60);
+  if(dk.length){ L.push('', '### 日別（新しい順・最大 60 日）', '', '| 日付 | 合計 | 内訳 |', '|---|---:|---|');
+    dk.forEach(k => L.push(`| ${dayLabel(k)} | ${fmtH(sumObj(m[k]))} | ${Object.entries(m[k]).filter(([, v]) => v >= 60000).map(([id, v]) => c(subName(id)) + ' ' + fmtH(v)).join('、')} |`)); }
+  db.books.forEach(b => {
+    const ids = unitIds(b);
+    L.push('', `## ${c(subName(b.subjectId))}：${c(b.name)}`, '');
+    const meta = [];
+    if(b.target){ const p = plan(b); meta.push(`締切 ${b.target.replace(/-/g, '/')}` + (p && p.left ? `（1日 ${p.need} 問ペース）` : '')); }
+    b.rounds.forEach(r => { const done = ids.filter(q => r.items[q] && r.items[q].m), o = done.filter(q => r.items[q].m === 'o').length;
+      const tm = ids.reduce((a, q) => a + ((r.items[q] || {}).t || 0), 0);
+      meta.push(`${c(r.name)}: ${done.length}/${ids.length} 問・正答率 ${pct(o, done.length)}・${fmt(tm)}`); });
+    meta.forEach(x => L.push('- ' + x));
+    const rows = ids.filter(q => b.rounds.some(r => r.items[q] && (r.items[q].m || r.items[q].t)));
+    if(rows.length){
+      L.push('', '| 問題 | ' + b.rounds.map(r => c(r.name)).join(' | ') + ' |', '|---|' + b.rounds.map(() => '---|').join(''));
+      rows.forEach(q => L.push(`| ${c(lab(q))} | ` + b.rounds.map(r => { const it = r.items[q]; if(!it || !(it.m || it.t)) return '';
+        return [it.m ? MARK[it.m] : '', it.t ? fmt(it.t) : '', it.at ? md(dayKey(it.at)) : ''].filter(Boolean).join(' '); }).join(' | ') + ' |'));
+    }
+  });
+  return L.join('\n') + '\n';
+}
+
 /* ---------- GitHub に自動保存 ---------- */
 function b64enc(str){ const u = new TextEncoder().encode(str); let s = ''; for(let i = 0; i < u.length; i += 0x8000) s += String.fromCharCode.apply(null, u.subarray(i, i + 0x8000)); return btoa(s); }
 function b64dec(b){ const s = atob(b.replace(/\s/g, '')); return new TextDecoder().decode(Uint8Array.from(s, c => c.charCodeAt(0))); }
@@ -606,8 +638,8 @@ const Sync = {
   timer: null, busy: false, again: false,
   store(){ localStorage.setItem(SYNC_KEY, JSON.stringify(this.cfg)); },
   schedule(){ if(!this.cfg.token) return; clearTimeout(this.timer); this.timer = setTimeout(() => this.sync(), 4000); },
-  req(method, body, keepalive){
-    return fetch(`https://api.github.com/repos/${this.cfg.repo}/contents/${this.cfg.path}` + (method === 'GET' ? '?t=' + Date.now() : ''), {
+  req(method, body, keepalive, path){
+    return fetch(`https://api.github.com/repos/${this.cfg.repo}/contents/${encodeURIComponent(path || this.cfg.path)}` + (method === 'GET' ? '?t=' + Date.now() : ''), {
       method, cache:'no-store', keepalive:!!keepalive,
       headers:Object.assign({Authorization:'Bearer ' + this.cfg.token, Accept:'application/vnd.github+json'}, body ? {'Content-Type':'application/json'} : {}),
       body:body ? JSON.stringify(body) : undefined});
@@ -620,6 +652,17 @@ const Sync = {
     const r = await this.req('PUT', {message:'記録を更新 ' + dt(Date.now()), content:b64enc(JSON.stringify(db)), sha:sha || undefined}, keepalive);
     if(!r.ok) throw new Error(await this.why(r));
     this.cfg.sha = (await r.json()).content.sha;
+    if(!keepalive) await this.pushReadme().catch(() => {});   // 読めるまとめ（失敗しても記録そのものは保存済み）
+  },
+  // GitHub のリポジトリのトップに出る README.md を、記録のまとめで書き換える
+  async pushReadme(){
+    const put = sha => this.req('PUT', {message:'まとめを更新 ' + dt(Date.now()), content:b64enc(mdReport()), sha:sha || undefined}, false, 'README.md');
+    let r = await put(this.cfg.rsha);
+    if(r.status === 409 || r.status === 422){   // sha が古い → 取り直して 1 回だけやり直す
+      const g = await this.req('GET', null, false, 'README.md');
+      r = await put(g.ok ? (await g.json()).sha : undefined);
+    }
+    if(r.ok) this.cfg.rsha = (await r.json()).content.sha;
   },
   async sync(manual){
     if(!this.cfg.token) return;
