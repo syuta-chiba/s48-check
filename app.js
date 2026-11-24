@@ -393,8 +393,7 @@ function renderSet(){
   h += '</div>';
   h += `<h2>ファイルに保存</h2><div class="note">${db.backupAt ? '最後に保存した日時: ' + dt(db.backupAt) : 'まだファイルに保存していません'}
     <div style="display:flex; gap:8px; margin-top:10px"><button class="btn" style="flex:1" data-act="fileSave">ファイルに保存</button><button class="btn" style="flex:1" data-act="fileLoad">ファイルから戻す</button></div></div>`;
-  h += `<h2>このアプリ</h2><div class="note">版: <b>${esc(BUILD || '不明')}</b><button class="btn wide" data-act="hardUpdate">最新の版に更新</button>
-    <div class="hint">画面が古いままのときに押してください（記録は消えません）</div></div>`;
+  h += `<div class="hint" style="text-align:center; margin-top:16px">版 ${esc(BUILD || '不明')}</div>`;
   $('#v-set').innerHTML = h;
 }
 
@@ -570,12 +569,6 @@ const ACT = {
       <button class="btn wide primary" data-sheet="close">閉じる</button>`);
   },
   async qrScan(){ qrScan(); },
-  async hardUpdate(){   // Service Worker とキャッシュを消して読み込み直す（記録は localStorage なので消えない）
-    toast('最新の版を読み込んでいます…'); Sync.flush();
-    try{ const rs = await navigator.serviceWorker.getRegistrations(); await Promise.all(rs.map(r => r.unregister())); }catch(e){}
-    try{ const ks = await caches.keys(); await Promise.all(ks.map(k => caches.delete(k))); }catch(e){}
-    setTimeout(() => location.replace(location.pathname + '?r=' + Date.now()), 600);
-  },
   fileLoad(){ $('#bkFile').click(); },
 };
 document.addEventListener('click', e => {
